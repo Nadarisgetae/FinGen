@@ -4,8 +4,9 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Environment variables
+# Environment variables & secrets
 .env
+.streamlit/secrets.toml
 
 # Virtual environments
 venv/
@@ -29,6 +30,7 @@ session_backup/
 # Windows/macOS files
 Thumbs.db
 .DS_Store
+
 # Archives
 *.zip
 
