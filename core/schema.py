@@ -3,7 +3,7 @@ FinGen v2 — Core Schema (Canonical Fact Model)
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Union
 from uuid import UUID
 from datetime import date
 
@@ -12,8 +12,8 @@ class Fact(BaseModel):
     """Canonical financial fact - every number in the system maps to this."""
     
     # Identity
-    company_id: Optional[UUID] = None
-    document_id: Optional[UUID] = None
+    company_id: Optional[Union[UUID, str]] = None
+    document_id: Optional[Union[UUID, str]] = None
     
     # Classification (must match taxonomy.yaml)
     statement: Literal["IS", "BS", "CF", "SEGMENT", "KPI", "GUIDANCE"] = Field(

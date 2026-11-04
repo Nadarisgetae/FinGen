@@ -26,16 +26,25 @@ def _get(grouped, company: str, period: str, line_item: str) -> Optional[float]:
 
 def peer_benchmark(
     facts: List[Fact],
-    target_company_id: str,
+    target_company_id: str = None,
     peer_company_ids: List[str] = None,
+    context: Dict = None,
 ) -> AnalyticsResult:
     """
     Peer comparison table: key metrics vs selected peers.
     facts include the target company + peers.
     """
     grouped = _group_by_company_period(facts)
-
     all_companies = list(grouped.keys())
+
+    if not target_company_id:
+        if context and context.get("company_id"):
+            target_company_id = str(context["company_id"])
+        elif all_companies:
+            target_company_id = all_companies[0]
+        else:
+            target_company_id = "target"
+
     if peer_company_ids:
         peers = [c for c in all_companies if c in peer_company_ids]
     else:
@@ -115,16 +124,22 @@ def peer_benchmark(
 def market_size_growth(
     market_data: Dict = None,
     company_revenue: float = None,
+    context: Dict = None,
+    facts: List[Fact] = None,
 ) -> AnalyticsResult:
     """
     Market size, growth, share, TAM/SAM/SOM.
-    market_data = {
-        "total_addressable_market": 500000,  # INR_cr
-        "serviceable_addressable_market": 150000,
-        "market_growth_rate": 0.12,
-        "historical_market_size": {2020: 300000, 2021: 330000, ...},
-    }
     """
+    ctx = context or {}
+    if not market_data:
+        market_data = ctx.get("market_data") or ctx.get("industry_data") or {}
+
+    if not company_revenue and facts:
+        for f in facts:
+            if f.line_item in ("revenue_from_operations", "total_income"):
+                company_revenue = f.value
+                break
+
     if not market_data:
         return AnalyticsResult(metrics={}, metadata={"error": "No market data provided"})
 
@@ -157,13 +172,19 @@ def market_size_growth(
 
 
 def industry_concentration(
-    peer_market_shares: Dict[str, float],
+    peer_market_shares: Dict[str, float] = None,
+    context: Dict = None,
 ) -> AnalyticsResult:
     """
     Industry concentration via HHI and CR4/CR8.
     peer_market_shares = {"Company A": 0.25, "Company B": 0.20, ...}
     """
+    ctx = context or {}
     if not peer_market_shares:
+        peer_market_shares = ctx.get("peer_market_shares") or ctx.get("market_shares") or {}
+
+    if not peer_market_shares:
+        return AnalyticsResult(metrics={}, metadata={"error": "No share data"})
         return AnalyticsResult(metrics={}, metadata={"error": "No share data"})
 
     shares = sorted(peer_market_shares.values(), reverse=True)

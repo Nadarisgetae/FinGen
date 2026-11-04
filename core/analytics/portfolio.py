@@ -62,14 +62,17 @@ def _xirr(cash_flows: List[Dict]) -> float:
 
 
 def xirr(
-    transactions: List[Dict],
-    current_holdings_value: float,
+    transactions: List[Dict] = None,
+    current_holdings_value: float = 0.0,
     valuation_date: date = None,
 ) -> AnalyticsResult:
     """
     XIRR from transactions + current portfolio value.
     transactions = [{"date": date, "amount": float, "type": "buy"/"sell"/"dividend"}, ...]
     """
+    if not transactions or not current_holdings_value:
+        return AnalyticsResult(metrics={}, metadata={"error": "No transactions or current holdings value"})
+
     if valuation_date is None:
         valuation_date = date.today()
 
@@ -154,27 +157,37 @@ def portfolio_allocation(holdings: List[Dict]) -> AnalyticsResult:
 
 
 def portfolio_attribution(
-    portfolio_returns: Dict[str, float],
-    benchmark_returns: Dict[str, float],
-    portfolio_weights: Dict[str, float],
-    benchmark_weights: Dict[str, float],
+    portfolio_returns: Dict[str, float] = None,
+    benchmark_returns: Dict[str, float] = None,
+    portfolio_weights: Dict[str, float] = None,
+    benchmark_weights: Dict[str, float] = None,
+    portfolio_sector_returns: Dict[str, float] = None,
+    benchmark_sector_returns: Dict[str, float] = None,
 ) -> AnalyticsResult:
     """
     Brinson attribution: allocation + selection + interaction effects.
     All dicts: {sector: value} for a single period.
     """
-    sectors = set(portfolio_returns.keys()) | set(benchmark_returns.keys())
+    p_ret = portfolio_sector_returns or (portfolio_returns if isinstance(portfolio_returns, dict) else None)
+    b_ret = benchmark_sector_returns or (benchmark_returns if isinstance(benchmark_returns, dict) else None)
+
+    if not p_ret or not b_ret:
+        return AnalyticsResult(metrics={}, metadata={"error": "Insufficient attribution return data"})
+
+    portfolio_weights = portfolio_weights or {}
+    benchmark_weights = benchmark_weights or {}
+    sectors = set(p_ret.keys()) | set(b_ret.keys())
 
     allocation_effect = 0.0
     selection_effect = 0.0
     interaction_effect = 0.0
     details = []
 
-    benchmark_total = sum(benchmark_returns.get(s, 0) * benchmark_weights.get(s, 0) for s in sectors)
+    benchmark_total = sum(b_ret.get(s, 0) * benchmark_weights.get(s, 0) for s in sectors)
 
     for sector in sectors:
-        rp = portfolio_returns.get(sector, 0)
-        rb = benchmark_returns.get(sector, 0)
+        rp = p_ret.get(sector, 0)
+        rb = b_ret.get(sector, 0)
         wp = portfolio_weights.get(sector, 0)
         wb = benchmark_weights.get(sector, 0)
 
@@ -194,7 +207,7 @@ def portfolio_attribution(
             "total_effect": alloc + sel + inter,
         })
 
-    portfolio_total = sum(portfolio_returns.get(s, 0) * portfolio_weights.get(s, 0) for s in sectors)
+    portfolio_total = sum(p_ret.get(s, 0) * portfolio_weights.get(s, 0) for s in sectors)
     total_active = portfolio_total - benchmark_total
 
     results = {
@@ -273,20 +286,25 @@ def drawdown_analysis(
 
 
 def benchmark_comparison(
-    portfolio_returns: List[float],
-    benchmark_returns: List[float],
+    portfolio_returns: List[float] = None,
+    benchmark_returns: List[float] = None,
     risk_free_rate: float = 0.065,
+    portfolio_periodic_returns: List[float] = None,
+    benchmark_periodic_returns: List[float] = None,
 ) -> AnalyticsResult:
     """
     Portfolio vs benchmark: excess return, tracking error, information ratio, beta, alpha.
     Returns series (periodic, e.g., daily).
     """
-    if not portfolio_returns or not benchmark_returns:
+    p_series = portfolio_periodic_returns or (portfolio_returns if isinstance(portfolio_returns, list) else None)
+    b_series = benchmark_periodic_returns or (benchmark_returns if isinstance(benchmark_returns, list) else None)
+
+    if not p_series or not b_series:
         return AnalyticsResult(metrics={}, metadata={"error": "No return data"})
 
-    n = min(len(portfolio_returns), len(benchmark_returns))
-    p = portfolio_returns[-n:]
-    b = benchmark_returns[-n:]
+    n = min(len(p_series), len(b_series))
+    p = p_series[-n:]
+    b = b_series[-n:]
 
     # Returns
     port_total = 1.0
