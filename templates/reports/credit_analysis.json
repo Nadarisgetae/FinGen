@@ -1,0 +1,60 @@
+{
+  "id": "credit_analysis",
+  "title": "Credit Analysis Report",
+  "sections": [
+    {
+      "key": "overview",
+      "title": "Credit Overview",
+      "analytics": ["internal_rating"],
+      "needs": ["BS.total_debt", "BS.total_equity", "IS.ebitda", "IS.finance_costs"],
+      "prompt": "credit_analysis/overview.md",
+      "max_words": 300,
+      "chart": null
+    },
+    {
+      "key": "leverage",
+      "title": "Leverage Profile",
+      "analytics": ["debt_equity", "net_debt_ebitda", "leverage_ratios"],
+      "needs": ["BS.total_debt", "BS.total_equity", "BS.cash_and_equivalents", "IS.ebitda"],
+      "prompt": "credit_analysis/leverage.md",
+      "max_words": 350,
+      "chart": "leverage_trend"
+    },
+    {
+      "key": "coverage",
+      "title": "Coverage & Debt Service",
+      "analytics": ["icr", "dscr"],
+      "needs": ["IS.ebitda", "IS.finance_costs", "CF.principal_repayment", "CF.capex"],
+      "prompt": "credit_analysis/coverage.md",
+      "max_words": 350,
+      "chart": "coverage_trend"
+    },
+    {
+      "key": "liquidity",
+      "title": "Liquidity Position",
+      "analytics": [],
+      "needs": ["BS.current_assets", "BS.current_liabilities", "BS.cash_and_equivalents"],
+      "prompt": "credit_analysis/liquidity.md",
+      "max_words": 300,
+      "chart": null
+    },
+    {
+      "key": "score",
+      "title": "Credit Score & Rating",
+      "analytics": ["altman_z_score", "internal_rating"],
+      "needs": ["BS.total_assets", "BS.total_liabilities", "BS.total_equity", "BS.current_assets", "BS.current_liabilities", "IS.ebit", "IS.revenue_from_operations"],
+      "prompt": "credit_analysis/score.md",
+      "max_words": 350,
+      "chart": null
+    },
+    {
+      "key": "covenants",
+      "title": "Covenant Analysis",
+      "analytics": ["covenant_headroom"],
+      "needs": ["BS.total_debt", "BS.cash_and_equivalents", "IS.ebitda", "IS.finance_costs"],
+      "prompt": "credit_analysis/covenants.md",
+      "max_words": 300,
+      "chart": null
+    }
+  ]
+}

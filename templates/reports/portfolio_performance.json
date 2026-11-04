@@ -1,0 +1,42 @@
+{
+  "id": "portfolio_performance",
+  "title": "Portfolio Performance Report",
+  "sections": [
+    {
+      "key": "performance",
+      "title": "Performance Summary",
+      "analytics": ["xirr", "portfolio_allocation"],
+      "needs": [],
+      "prompt": "portfolio/performance.md",
+      "max_words": 450,
+      "chart": "xirr_curve"
+    },
+    {
+      "key": "allocation",
+      "title": "Allocation",
+      "analytics": ["portfolio_allocation"],
+      "needs": [],
+      "prompt": "portfolio/performance.md",
+      "max_words": 300,
+      "chart": "allocation_pie"
+    },
+    {
+      "key": "attribution",
+      "title": "Attribution",
+      "analytics": ["portfolio_attribution", "benchmark_comparison"],
+      "needs": [],
+      "prompt": "portfolio/attribution.md",
+      "max_words": 350,
+      "chart": null
+    },
+    {
+      "key": "drawdown",
+      "title": "Drawdown & Risk",
+      "analytics": ["drawdown_analysis", "benchmark_comparison"],
+      "needs": [],
+      "prompt": "portfolio/performance.md",
+      "max_words": 300,
+      "chart": null
+    }
+  ]
+}

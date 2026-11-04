@@ -1,0 +1,42 @@
+{
+  "id": "valuation",
+  "title": "Valuation Report",
+  "sections": [
+    {
+      "key": "methodology",
+      "title": "Valuation Methodology",
+      "analytics": [],
+      "needs": ["IS.revenue_from_operations"],
+      "prompt": "valuation/methodology.md",
+      "max_words": 250,
+      "chart": null
+    },
+    {
+      "key": "dcf",
+      "title": "DCF Analysis",
+      "analytics": ["dcf_fcff", "sensitivity_grid"],
+      "needs": ["IS.revenue_from_operations", "IS.ebitda", "IS.depreciation_amortisation", "IS.finance_costs", "IS.tax_expense", "CF.capex", "CF.change_in_working_capital", "BS.total_debt", "BS.cash_and_equivalents", "BS.total_equity"],
+      "prompt": "valuation/dcf.md",
+      "max_words": 500,
+      "chart": "sensitivity_tornado"
+    },
+    {
+      "key": "multiples",
+      "title": "Relative Valuation",
+      "analytics": ["multiples_valuation"],
+      "needs": ["IS.ebitda", "IS.profit_after_tax", "BS.total_equity", "BS.total_debt", "BS.cash_and_equivalents"],
+      "prompt": "valuation/multiples.md",
+      "max_words": 400,
+      "chart": null
+    },
+    {
+      "key": "football_field",
+      "title": "Valuation Summary",
+      "analytics": ["football_field"],
+      "needs": ["IS.ebitda", "BS.total_debt", "BS.cash_and_equivalents"],
+      "prompt": "valuation/football_field.md",
+      "max_words": 300,
+      "chart": "football_field"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "id": "industry_analysis",
+  "title": "Industry Analysis Report",
+  "sections": [
+    {
+      "key": "market",
+      "title": "Market Size & Growth",
+      "analytics": ["market_size_growth"],
+      "needs": [],
+      "prompt": "industry_analysis/market.md",
+      "max_words": 350,
+      "chart": null
+    },
+    {
+      "key": "structure",
+      "title": "Industry Structure",
+      "analytics": ["industry_concentration"],
+      "needs": [],
+      "prompt": "industry_analysis/structure.md",
+      "max_words": 300,
+      "chart": null
+    },
+    {
+      "key": "peers",
+      "title": "Peer Benchmarking",
+      "analytics": ["peer_benchmark"],
+      "needs": ["IS.revenue_from_operations", "IS.ebitda", "IS.profit_after_tax", "BS.total_assets", "BS.total_equity", "BS.total_debt"],
+      "prompt": "industry_analysis/peers.md",
+      "max_words": 450,
+      "chart": null
+    },
+    {
+      "key": "drivers",
+      "title": "Key Drivers & Outlook",
+      "analytics": [],
+      "needs": [],
+      "prompt": "industry_analysis/drivers.md",
+      "max_words": 300,
+      "chart": null
+    }
+  ]
+}

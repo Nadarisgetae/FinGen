@@ -1,0 +1,388 @@
+# FinGen v2 — Canonical Line-Item Taxonomy
+# Maps raw source labels (from annual reports, Screener, XBRL) to normalized keys.
+# Format per item: key -> {statement, label, aliases, unit_default, sign}
+#
+# statement: IS | BS | CF | SEGMENT | KPI | GUIDANCE
+# sign: "+" normal, "-" contra (e.g., costs shown as negative in some sources)
+#
+# INDIAN LISTED COMPANIES (Ind AS) first; global later.
+
+# =============================================================================
+# INCOME STATEMENT (IS)
+# =============================================================================
+income_statement:
+
+  revenue_from_operations:
+    label: "Revenue from Operations"
+    aliases: ["Revenue from operations", "Operating Revenue", "Revenue", "Net Sales", "Sales", "Turnover", "Total Revenue from Operations", "Revenue from Operation"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  total_income:
+    label: "Total Income"
+    aliases: ["Total Income", "Total Revenue", "Total operating income", "Total operating revenue"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  other_income:
+    label: "Other Income"
+    aliases: ["Other Income", "Other operating income", "Non-operating income"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  cost_of_goods_sold:
+    label: "Cost of Goods Sold"
+    aliases: ["Cost of Goods Sold", "Cost of sales", "Cost of materials consumed", "Cost of material consumed", "Cost of Goods and Services", "Cost of services", "Purchases of stock-in-trade", "Cost of materials"]
+    unit_default: "INR_cr"
+    sign: "-"
+
+  cost_of_materials:
+    label: "Cost of Materials"
+    aliases: ["Cost of materials consumed", "Cost of Material Consumed", "Raw material consumed"]
+    unit_default: "INR_cr"
+    sign: "-"
+
+  employee_benefits_expense:
+    label: "Employee Benefits Expense"
+    aliases: ["Employee Benefits Expense", "Employee benefit expense", "Employee cost", "Employee expenses", "Salaries and wages", "Staff costs"]
+    unit_default: "INR_cr"
+    sign: "-"
+
+  other_expenses:
+    label: "Other Expenses"
+    aliases: ["Other expenses", "Other Expenses", "Selling and distribution expenses", "Administrative expenses", "Operating expenses", "Other operating expenses", "Total other expenses"]
+    unit_default: "INR_cr"
+    sign: "-"
+
+  depreciation_amortisation:
+    label: "Depreciation & Amortisation"
+    aliases: ["Depreciation and amortisation", "Depreciation & Amortisation", "Depreciation", "Depreciation / Amortisation", "Depreciation & amortization", "Amortisation expense"]
+    unit_default: "INR_cr"
+    sign: "-"
+
+  ebitda:
+    label: "EBITDA"
+    aliases: ["EBITDA", "Earnings before interest tax depreciation amortization", "Earnings before interest, taxes, depreciation and amortization"]
+    unit_default: "INR_cr"
+    sign: "+"
+    derived: true  # Usually computed: revenue - COGS - employee - other expenses
+
+  ebit:
+    label: "EBIT / Operating Profit"
+    aliases: ["EBIT", "Operating profit", "Operating Profit", "Profit from operations", "Operating income", "Profit before interest, depreciation and tax", "PBDIT"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  finance_costs:
+    label: "Finance Costs"
+    aliases: ["Finance costs", "Finance Costs", "Interest expense", "Interest and finance charges", "Interest", "Finance charge", "Finance charges", "Interest and other finance charges"]
+    unit_default: "INR_cr"
+    sign: "-"
+
+  profit_before_tax:
+    label: "Profit Before Tax"
+    aliases: ["Profit before tax", "Profit Before Tax", "Profit before tax and exceptional items", "PBT", "Profit before Tax", "Profit/(Loss) before tax"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  tax_expense:
+    label: "Tax Expense"
+    aliases: ["Tax expense", "Tax Expense", "Total tax expense", "Provision for tax", "Income tax expense", "Tax"]
+    unit_default: "INR_cr"
+    sign: "-"
+
+  profit_after_tax:
+    label: "Profit After Tax"
+    aliases: ["Profit after tax", "Profit After Tax", "Net profit", "Net Profit", "Profit for the year", "Net profit for the year", "PAT", "Profit/(Loss) for the year", "Net profit/(loss)"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  exceptional_items:
+    label: "Exceptional Items"
+    aliases: ["Exceptional items", "Exceptional Items", "Exceptional charge"]
+    unit_default: "INR_cr"
+    sign: "-"
+
+  eps_basic:
+    label: "EPS (Basic)"
+    aliases: ["Basic EPS", "Earnings per share", "Basic earnings per share", "EPS (Basic)", "Earnings per share (EPS)"]
+    unit_default: "INR"
+    sign: "+"
+
+  eps_diluted:
+    label: "EPS (Diluted)"
+    aliases: ["Diluted EPS", "Diluted earnings per share", "EPS (Diluted)"]
+    unit_default: "INR"
+    sign: "+"
+
+# =============================================================================
+# BALANCE SHEET (BS)
+# =============================================================================
+balance_sheet:
+
+  current_assets:
+    label: "Total Current Assets"
+    aliases: ["Total Current Assets", "Current Assets", "Total current assets"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  non_current_assets:
+    label: "Total Non-Current Assets"
+    aliases: ["Total Non-Current Assets", "Non Current Assets", "Total non-current assets", "Fixed Assets", "Total fixed assets"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  total_assets:
+    label: "Total Assets"
+    aliases: ["Total Assets", "Total assets", "Asset Total", "Grand Total"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  current_liabilities:
+    label: "Total Current Liabilities"
+    aliases: ["Total Current Liabilities", "Current Liabilities", "Total current liabilities"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  non_current_liabilities:
+    label: "Total Non-Current Liabilities"
+    aliases: ["Total Non-Current Liabilities", "Non Current Liabilities", "Total non-current liabilities", "Long-term liabilities"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  total_liabilities:
+    label: "Total Liabilities"
+    aliases: ["Total Liabilities", "Total liabilities"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  total_equity:
+    label: "Total Equity"
+    aliases: ["Total Equity", "Total equity", "Equity", "Shareholders' equity", "Shareholders Equity", "Shareholders' funds", "Net worth"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  share_capital:
+    label: "Share Capital"
+    aliases: ["Share Capital", "share capital", "Equity share capital", "Paid-up capital"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  reserves_and_surplus:
+    label: "Reserves and Surplus"
+    aliases: ["Reserves and Surplus", "reserves and surplus", "Reserves & surplus", "Reserves"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  retained_earnings:
+    label: "Retained Earnings"
+    aliases: ["Retained earnings", "Retained Earnings", "Reserves and surplus"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  total_debt:
+    label: "Total Debt"
+    aliases: ["Total Debt", "Total debt", "Borrowings", "Total borrowings", "Total secured and unsecured loans", "Long-term borrowings + Short-term borrowings"]
+    unit_default: "INR_cr"
+    sign: "+"
+    derived: true  # long-term + short-term borrowings
+
+  long_term_borrowings:
+    label: "Long-term Borrowings"
+    aliases: ["Long-term borrowings", "Long term borrowings", "Long-term debt", "Non-current borrowings", "Term loans", "Secured loans"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  short_term_borrowings:
+    label: "Short-term Borrowings"
+    aliases: ["Short-term borrowings", "Short term borrowings", "Current maturities of long-term debt", "Short-term loans", "Bank overdraft"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  cash_and_equivalents:
+    label: "Cash and Cash Equivalents"
+    aliases: ["Cash and cash equivalents", "Cash and Cash Equivalents", "Cash & bank balances", "Cash and bank balances", "Bank balances", "Cash at bank"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  cash_and_bank_balances:
+    label: "Cash and Bank Balances"
+    aliases: ["Cash and bank balances", "Cash & bank balances", "Bank balances other than above"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  inventory:
+    label: "Inventory"
+    aliases: ["Inventories", "Inventory", "Closing stock", "Stocks", "Finished goods"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  trade_receivables:
+    label: "Trade Receivables"
+    aliases: ["Trade receivables", "Sundry debtors", "Debtors", "Accounts receivable", "Trade Receivables"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  trade_payables:
+    label: "Trade Payables"
+    aliases: ["Trade payables", "Sundry creditors", "Creditors", "Accounts payable", "Trade Payables"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  investments:
+    label: "Investments"
+    aliases: ["Investments", "Current investments", "Non-current investments"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  property_plant_equipment:
+    label: "Property, Plant & Equipment"
+    aliases: ["Property, plant and equipment", "Property, Plant & Equipment", "Fixed assets", "Net block"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  intangible_assets:
+    label: "Intangible Assets"
+    aliases: ["Intangible assets", "Intangible Assets", "Goodwill"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+# =============================================================================
+# CASH FLOW (CF)
+# =============================================================================
+cash_flow:
+
+  cfo:
+    label: "Cash Flow from Operating Activities"
+    aliases: ["Net cash from operating activities", "Cash flow from operating activities", "Net cash provided by operating activities", "Cash generated from operations"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  cfi:
+    label: "Cash Flow from Investing Activities"
+    aliases: ["Net cash from investing activities", "Cash flow from investing activities", "Net cash used in investing activities"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  cff:
+    label: "Cash Flow from Financing Activities"
+    aliases: ["Net cash from financing activities", "Cash flow from financing activities", "Net cash used in financing activities"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  capex:
+    label: "Capital Expenditure"
+    aliases: ["Capital expenditure", "Purchase of property, plant and equipment", "Additions to fixed assets", "Capital work-in-progress", "Expenditure on fixed assets"]
+    unit_default: "INR_cr"
+    sign: "-"
+
+  principal_repayment:
+    label: "Principal Repayment"
+    aliases: ["Repayment of borrowings", "Repayment of loans", "Principal repayment", "Repayment of long-term borrowings", "Repayment of debt"]
+    unit_default: "INR_cr"
+    sign: "-"
+
+  change_in_working_capital:
+    label: "Change in Working Capital"
+    aliases: ["Changes in working capital", "Change in working capital", "Working capital changes", "Increase / (decrease) in working capital"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  dividends_paid:
+    label: "Dividends Paid"
+    aliases: ["Dividend paid", "Dividends paid", "Payment of dividends"]
+    unit_default: "INR_cr"
+    sign: "-"
+
+  closing_cash:
+    label: "Closing Cash and Equivalents"
+    aliases: ["Closing cash and cash equivalents", "Cash and cash equivalents at end of period", "Closing balance", "Cash at the end of the year"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  opening_cash:
+    label: "Opening Cash and Equivalents"
+    aliases: ["Opening cash and cash equivalents", "Cash and cash equivalents at beginning of period", "Opening balance"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+# =============================================================================
+# SEGMENT (SEGMENT)
+# =============================================================================
+segment:
+
+  segment_revenue:
+    label: "Segment Revenue"
+    aliases: ["Segment revenue", "Revenue from segments", "Segment income"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  segment_profit:
+    label: "Segment Profit"
+    aliases: ["Segment result", "Segment profit", "Segment EBIT", "Profit before interest, depreciation, tax and segment"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  segment_assets:
+    label: "Segment Assets"
+    aliases: ["Segment assets", "Total assets of segment"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+# =============================================================================
+# KPI (KPI)
+# =============================================================================
+kpi:
+
+  production_volume:
+    label: "Production Volume"
+    aliases: ["Production", "Total production", "Output", "Production volume"]
+    unit_default: "units"
+    sign: "+"
+
+  sales_volume:
+    label: "Sales Volume"
+    aliases: ["Sales volume", "Total sales volume", "Units sold", "Sales in units"]
+    unit_default: "units"
+    sign: "+"
+
+  market_share:
+    label: "Market Share"
+    aliases: ["Market share", "Market Share"]
+    unit_default: "percentage"
+    sign: "+"
+
+  capacity:
+    label: "Capacity"
+    aliases: ["Installed capacity", "Capacity", "Total capacity"]
+    unit_default: "units"
+    sign: "+"
+
+  headcount:
+    label: "Employee Headcount"
+    aliases: ["Number of employees", "Employee strength", "Headcount", "Total employees"]
+    unit_default: "shares"
+    sign: "+"
+
+# =============================================================================
+# GUIDANCE (GUIDANCE)
+# =============================================================================
+guidance:
+
+  revenue_guidance:
+    label: "Revenue Guidance"
+    aliases: ["Revenue guidance", "Revenue target"]
+    unit_default: "INR_cr"
+    sign: "+"
+
+  growth_guidance:
+    label: "Growth Guidance"
+    aliases: ["Growth guidance", "Revenue growth guidance"]
+    unit_default: "percentage"
+    sign: "+"
+
+  capex_guidance:
+    label: "Capex Guidance"
+    aliases: ["Capex guidance", "Capital expenditure guidance"]
+    unit_default: "INR_cr"
+    sign: "+"

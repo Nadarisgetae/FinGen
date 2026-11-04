@@ -1,0 +1,60 @@
+{
+  "id": "due_diligence",
+  "title": "Due Diligence Report",
+  "sections": [
+    {
+      "key": "executive_summary",
+      "title": "Executive Summary",
+      "analytics": [],
+      "needs": ["IS.revenue_from_operations", "IS.profit_after_tax"],
+      "prompt": "due_diligence/exec_summary.md",
+      "max_words": 300,
+      "chart": null
+    },
+    {
+      "key": "red_flags",
+      "title": "Red Flag Checklist",
+      "analytics": ["financial_risk_flags"],
+      "needs": ["BS.total_debt", "BS.total_equity", "BS.current_assets", "BS.current_liabilities", "IS.ebitda", "IS.finance_costs"],
+      "prompt": "due_diligence/red_flags.md",
+      "max_words": 400,
+      "chart": null
+    },
+    {
+      "key": "related_party",
+      "title": "Related-Party Transactions",
+      "analytics": [],
+      "needs": [],
+      "prompt": "due_diligence/related_party.md",
+      "max_words": 350,
+      "chart": null
+    },
+    {
+      "key": "contingent_liabilities",
+      "title": "Contingent Liabilities & Litigation",
+      "analytics": [],
+      "needs": [],
+      "prompt": "due_diligence/contingent.md",
+      "max_words": 350,
+      "chart": null
+    },
+    {
+      "key": "auditor",
+      "title": "Auditor Notes & Qualifications",
+      "analytics": [],
+      "needs": [],
+      "prompt": "due_diligence/auditor.md",
+      "max_words": 300,
+      "chart": null
+    },
+    {
+      "key": "financial_quality",
+      "title": "Earnings Quality",
+      "analytics": ["common_size_statements"],
+      "needs": ["IS.revenue_from_operations", "IS.ebitda", "IS.profit_after_tax", "CF.cfo"],
+      "prompt": "due_diligence/earnings_quality.md",
+      "max_words": 350,
+      "chart": null
+    }
+  ]
+}

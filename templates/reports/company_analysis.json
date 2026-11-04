@@ -1,0 +1,60 @@
+{
+  "id": "company_analysis",
+  "title": "Company Analysis",
+  "sections": [
+    {
+      "key": "overview",
+      "title": "Business Overview",
+      "analytics": ["concentration_risk"],
+      "needs": ["IS.revenue_from_operations", "IS.total_income", "SEGMENT.segment_revenue"],
+      "prompt": "company_analysis/overview.md",
+      "max_words": 300,
+      "chart": null
+    },
+    {
+      "key": "growth",
+      "title": "Growth Analysis",
+      "analytics": ["yoy_growth", "cagr"],
+      "needs": ["IS.revenue_from_operations", "IS.profit_after_tax", "IS.ebitda"],
+      "prompt": "company_analysis/growth.md",
+      "max_words": 400,
+      "chart": "growth_bars"
+    },
+    {
+      "key": "profitability",
+      "title": "Profitability",
+      "analytics": ["profitability_ratios", "dupont_analysis"],
+      "needs": ["IS.revenue_from_operations", "IS.cost_of_goods_sold", "IS.ebitda", "IS.profit_after_tax", "BS.total_equity", "BS.total_assets"],
+      "prompt": "company_analysis/profitability.md",
+      "max_words": 400,
+      "chart": "margin_trend"
+    },
+    {
+      "key": "leverage",
+      "title": "Leverage & Liquidity",
+      "analytics": ["leverage_ratios"],
+      "needs": ["BS.total_debt", "BS.cash_and_equivalents", "BS.total_equity", "BS.total_assets", "BS.current_assets", "BS.current_liabilities"],
+      "prompt": "company_analysis/leverage.md",
+      "max_words": 350,
+      "chart": "leverage_trend"
+    },
+    {
+      "key": "efficiency",
+      "title": "Operating Efficiency",
+      "analytics": ["efficiency_ratios"],
+      "needs": ["IS.revenue_from_operations", "IS.cost_of_goods_sold", "BS.total_assets", "BS.inventory", "BS.trade_receivables", "BS.trade_payables"],
+      "prompt": "company_analysis/efficiency.md",
+      "max_words": 350,
+      "chart": null
+    },
+    {
+      "key": "cash_flow",
+      "title": "Cash Flow Analysis",
+      "analytics": [],
+      "needs": ["CF.cfo", "CF.cfi", "CF.cff", "CF.capex", "CF.closing_cash"],
+      "prompt": "company_analysis/cash_flow.md",
+      "max_words": 350,
+      "chart": null
+    }
+  ]
+}

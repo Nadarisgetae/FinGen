@@ -29,3 +29,11 @@ session_backup/
 # Windows/macOS files
 Thumbs.db
 .DS_Store
+# Archives
+*.zip
+
+# Pytest cache
+.pytest_cache/
+
+# Local uploads
+uploads/

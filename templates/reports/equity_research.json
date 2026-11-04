@@ -1,0 +1,60 @@
+{
+  "id": "equity_research",
+  "title": "Equity Research Report",
+  "sections": [
+    {
+      "key": "summary",
+      "title": "Investment Summary",
+      "analytics": ["profitability_ratios", "leverage_ratios"],
+      "needs": ["IS.revenue_from_operations", "IS.profit_after_tax", "IS.ebitda", "BS.total_debt", "BS.total_equity"],
+      "prompt": "equity_research/summary.md",
+      "max_words": 300,
+      "chart": null
+    },
+    {
+      "key": "business",
+      "title": "Business Overview",
+      "analytics": ["concentration_risk"],
+      "needs": ["IS.revenue_from_operations", "SEGMENT.segment_revenue", "SEGMENT.segment_profit"],
+      "prompt": "equity_research/business.md",
+      "max_words": 350,
+      "chart": null
+    },
+    {
+      "key": "financials",
+      "title": "Financial Performance",
+      "analytics": ["yoy_growth", "cagr", "profitability_ratios", "common_size_statements"],
+      "needs": ["IS.revenue_from_operations", "IS.ebitda", "IS.profit_after_tax", "BS.total_assets", "BS.total_equity"],
+      "prompt": "equity_research/financials.md",
+      "max_words": 500,
+      "chart": "growth_bars"
+    },
+    {
+      "key": "valuation",
+      "title": "Valuation",
+      "analytics": ["dcf_fcff", "multiples_valuation", "football_field"],
+      "needs": ["IS.revenue_from_operations", "IS.ebitda", "IS.depreciation_amortisation", "IS.finance_costs", "IS.tax_expense", "CF.capex", "CF.change_in_working_capital", "BS.total_debt", "BS.cash_and_equivalents"],
+      "prompt": "equity_research/valuation.md",
+      "max_words": 500,
+      "chart": "football_field"
+    },
+    {
+      "key": "risks",
+      "title": "Key Risks",
+      "analytics": ["financial_risk_flags"],
+      "needs": ["BS.current_assets", "BS.current_liabilities", "BS.total_debt", "BS.total_equity", "IS.ebitda", "IS.finance_costs"],
+      "prompt": "equity_research/risks.md",
+      "max_words": 350,
+      "chart": null
+    },
+    {
+      "key": "catalysts",
+      "title": "Catalysts & Outlook",
+      "analytics": ["project_is_bs_cf"],
+      "needs": ["IS.revenue_from_operations", "GUIDANCE.revenue_guidance", "GUIDANCE.growth_guidance"],
+      "prompt": "equity_research/catalysts.md",
+      "max_words": 300,
+      "chart": null
+    }
+  ]
+}

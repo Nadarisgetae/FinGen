@@ -1,0 +1,51 @@
+{
+  "id": "financial_forecast",
+  "title": "Financial Forecast / Projection",
+  "sections": [
+    {
+      "key": "assumptions",
+      "title": "Key Assumptions",
+      "analytics": [],
+      "needs": ["IS.revenue_from_operations", "IS.ebitda", "BS.total_debt"],
+      "prompt": "financial_forecast/assumptions.md",
+      "max_words": 350,
+      "chart": null
+    },
+    {
+      "key": "income_statement",
+      "title": "Projected Income Statement",
+      "analytics": ["project_is_bs_cf"],
+      "needs": ["IS.revenue_from_operations", "IS.cost_of_goods_sold", "IS.employee_benefits_expense", "IS.other_expenses", "IS.depreciation_amortisation", "IS.finance_costs", "IS.tax_expense"],
+      "prompt": "financial_forecast/income_statement.md",
+      "max_words": 400,
+      "chart": "growth_bars"
+    },
+    {
+      "key": "balance_sheet",
+      "title": "Projected Balance Sheet",
+      "analytics": ["project_is_bs_cf"],
+      "needs": ["BS.total_assets", "BS.total_equity", "BS.total_debt", "BS.cash_and_equivalents", "BS.inventory", "BS.trade_receivables", "BS.trade_payables"],
+      "prompt": "financial_forecast/balance_sheet.md",
+      "max_words": 350,
+      "chart": null
+    },
+    {
+      "key": "cash_flow",
+      "title": "Projected Cash Flow",
+      "analytics": ["project_is_bs_cf"],
+      "needs": ["CF.cfo", "CF.capex", "CF.cff", "CF.closing_cash"],
+      "prompt": "financial_forecast/cash_flow.md",
+      "max_words": 350,
+      "chart": null
+    },
+    {
+      "key": "scenarios",
+      "title": "Scenario Analysis",
+      "analytics": ["project_is_bs_cf", "sensitivity_grid"],
+      "needs": ["IS.revenue_from_operations", "IS.ebitda"],
+      "prompt": "financial_forecast/scenarios.md",
+      "max_words": 300,
+      "chart": "sensitivity_tornado"
+    }
+  ]
+}

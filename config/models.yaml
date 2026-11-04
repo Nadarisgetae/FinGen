@@ -1,0 +1,30 @@
+# FinGen v2 — Model Routing Config
+# AUTO-POPULATED by core/llm/discover_models.py at startup
+# DO NOT EDIT MANUALLY — run discover_models.py to refresh
+
+tasks:
+  extract:
+    - nvidia/nemotron-3-ultra:free
+    - qwen/qwen-2.5-72b-instruct:free
+    - meta-llama/llama-3.1-70b-instruct:free
+    - openrouter/auto
+  longdoc:
+    - nvidia/nemotron-3-ultra:free
+    - qwen/qwen-2.5-72b-instruct:free
+    - google/gemini-flash-1.5:free
+    - openrouter/auto
+  write:
+    - qwen/qwen-2.5-72b-instruct:free
+    - google/gemma-2-27b-it:free
+    - meta-llama/llama-3.1-70b-instruct:free
+    - openrouter/auto
+  verify:
+    - google/gemma-2-27b-it:free
+    - qwen/qwen-2.5-72b-instruct:free
+    - openrouter/auto
+
+fallback_provider: gemini
+
+# Paid fallback keys (used when ALL free keys exhausted)
+# Add to st.secrets.OPENROUTER_PAID_KEYS as list
+paid_fallback_enabled: true

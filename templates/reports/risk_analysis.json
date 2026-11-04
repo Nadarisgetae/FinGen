@@ -1,0 +1,51 @@
+{
+  "id": "risk_analysis",
+  "title": "Risk Analysis Report",
+  "sections": [
+    {
+      "key": "financial_risks",
+      "title": "Financial Risk Assessment",
+      "analytics": ["financial_risk_flags"],
+      "needs": ["BS.current_assets", "BS.current_liabilities", "BS.total_debt", "BS.total_equity", "BS.cash_and_equivalents", "IS.ebitda", "IS.finance_costs", "IS.profit_after_tax", "CF.cfo"],
+      "prompt": "risk_analysis/financial_risks.md",
+      "max_words": 400,
+      "chart": null
+    },
+    {
+      "key": "market_risks",
+      "title": "Market Risk",
+      "analytics": ["market_risk_metrics"],
+      "needs": [],
+      "prompt": "risk_analysis/market_risks.md",
+      "max_words": 300,
+      "chart": null
+    },
+    {
+      "key": "operational_risks",
+      "title": "Operational & Concentration Risk",
+      "analytics": ["concentration_risk"],
+      "needs": ["SEGMENT.segment_revenue", "SEGMENT.segment_profit"],
+      "prompt": "risk_analysis/operational_risks.md",
+      "max_words": 350,
+      "chart": null
+    },
+    {
+      "key": "sensitivity",
+      "title": "Sensitivity Analysis",
+      "analytics": ["sensitivity_analysis"],
+      "needs": ["IS.revenue_from_operations", "IS.ebitda"],
+      "prompt": "risk_analysis/sensitivity.md",
+      "max_words": 300,
+      "chart": "sensitivity_tornado"
+    },
+    {
+      "key": "mitigants",
+      "title": "Risk Mitigants",
+      "analytics": [],
+      "needs": ["BS.cash_and_equivalents", "BS.total_equity", "IS.ebitda"],
+      "prompt": "risk_analysis/mitigants.md",
+      "max_words": 250,
+      "chart": null
+    }
+  ]
+}

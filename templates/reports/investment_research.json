@@ -1,0 +1,42 @@
+{
+  "id": "investment_research",
+  "title": "Investment Research Report",
+  "sections": [
+    {
+      "key": "thesis",
+      "title": "Investment Thesis",
+      "analytics": ["yoy_growth", "profitability_ratios"],
+      "needs": ["IS.revenue_from_operations", "IS.ebitda", "IS.profit_after_tax", "BS.total_equity"],
+      "prompt": "investment_research/thesis.md",
+      "max_words": 400,
+      "chart": null
+    },
+    {
+      "key": "scenarios",
+      "title": "Bull / Base / Bear Scenarios",
+      "analytics": ["project_is_bs_cf", "dcf_fcff"],
+      "needs": ["IS.revenue_from_operations", "IS.ebitda", "BS.total_debt", "BS.cash_and_equivalents"],
+      "prompt": "investment_research/scenarios.md",
+      "max_words": 500,
+      "chart": "sensitivity_tornado"
+    },
+    {
+      "key": "valuation",
+      "title": "Valuation Summary",
+      "analytics": ["dcf_fcff", "multiples_valuation"],
+      "needs": ["IS.ebitda", "IS.profit_after_tax", "BS.total_debt", "BS.cash_and_equivalents"],
+      "prompt": "investment_research/valuation.md",
+      "max_words": 400,
+      "chart": "football_field"
+    },
+    {
+      "key": "risk_reward",
+      "title": "Risk / Reward",
+      "analytics": ["financial_risk_flags", "market_risk_metrics"],
+      "needs": ["BS.total_debt", "BS.total_equity", "IS.ebitda", "IS.finance_costs"],
+      "prompt": "investment_research/risk_reward.md",
+      "max_words": 350,
+      "chart": null
+    }
+  ]
+}
