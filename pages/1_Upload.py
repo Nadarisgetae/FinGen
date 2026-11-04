@@ -53,7 +53,7 @@ job_repo = JobRepo()
 fact_repo = FactRepo()
 review_repo = ReviewQueueRepo()
 
-user_id = st.session_state.get("user", {}).get("id", "local-user")
+user_id = (st.session_state.get("user") or {}).get("id", "local-user")
 
 # ── Demo Quick Load ────────────────────────────────────────────────
 with st.expander("⚡ Quick Start: Load Sample Data (Tata Steel FY24)", expanded=False):

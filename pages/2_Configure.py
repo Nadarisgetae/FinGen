@@ -23,7 +23,7 @@ REPORT_TYPES = [
 ]
 
 st.markdown("### Report Type")
-current_report = st.session_state.get("current_report_type") or st.session_state.get("ui_config", {}).get("report_type", "company_analysis")
+current_report = st.session_state.get("current_report_type") or (st.session_state.get("ui_config") or {}).get("report_type", "company_analysis")
 default_idx = next((i for i, (code, _, _) in enumerate(REPORT_TYPES) if code == current_report), 0)
 
 report_choice = st.radio(

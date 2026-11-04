@@ -13,7 +13,7 @@ st.set_page_config(page_title="Library | FinGen", layout="wide")
 st.title("6. Report Library")
 
 company_id = st.session_state.get("current_company_id")
-user_id = st.session_state.get("user", {}).get("id", "local-user")
+user_id = (st.session_state.get("user") or {}).get("id", "local-user")
 report_repo = ReportRepo()
 
 REPORT_FILTER_OPTIONS = [

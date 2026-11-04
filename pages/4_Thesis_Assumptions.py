@@ -15,7 +15,7 @@ if not company_id:
     st.error("No company in session. Upload documents first.")
     st.stop()
 
-user_id = st.session_state.get("user", {}).get("id", "local-user")
+user_id = (st.session_state.get("user") or {}).get("id", "local-user")
 repo = AssumptionRepo()
 
 DRIVERS = [

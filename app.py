@@ -44,13 +44,13 @@ def main():
     choice = st.sidebar.radio("Navigate", list(pages.keys()))
 
     # ── Session state init ───────────────────────────────────────────
-    for key in ("user", "current_company_id", "current_report_type", "ui_config"):
+    if "user" not in st.session_state or st.session_state["user"] is None:
+        st.session_state["user"] = {"id": "local-user", "email": "local@dev"}
+    if "ui_config" not in st.session_state or st.session_state["ui_config"] is None:
+        st.session_state["ui_config"] = {"report_type": "company_analysis"}
+    for key in ("current_company_id", "current_report_type"):
         if key not in st.session_state:
             st.session_state[key] = None
-
-    # Simple auth gate placeholder (Supabase Auth wired in F0-05)
-    if st.session_state["user"] is None:
-        st.session_state["user"] = {"id": "local-user", "email": "local@dev"}
 
     # ── Page router ──────────────────────────────────────────────────
     st.switch_page(pages[choice])

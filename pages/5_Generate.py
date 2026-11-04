@@ -23,7 +23,7 @@ if not company_id:
         st.switch_page("pages/1_Upload.py")
     st.stop()
 
-user_id = st.session_state.get("user", {}).get("id", "local-user")
+user_id = (st.session_state.get("user") or {}).get("id", "local-user")
 job_repo = JobRepo()
 report_repo = ReportRepo()
 

@@ -20,7 +20,7 @@ if not company_id:
     st.error("No company in session. Upload documents first.")
     st.stop()
 
-user_id = st.session_state["user"]["id"]
+user_id = (st.session_state.get("user") or {}).get("id", "local-user")
 fact_repo = FactRepo()
 review_repo = ReviewQueueRepo()
 job_repo = JobRepo()
