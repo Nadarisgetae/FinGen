@@ -26,7 +26,7 @@ def _markdown_to_html(markdown: str, charts: dict = None) -> str:
             return
         html_parts.append(
             "<table border='1' cellpadding='6' cellspacing='0' "
-            "style='border-collapse:collapse;width:100%;margin:12px 0;font-size:10pt;'>"
+            "style='width:100%;margin:12px 0;font-size:10pt;'>"
         )
         for ri, row in enumerate(table_rows):
             tag = "th" if ri == 0 else "td"

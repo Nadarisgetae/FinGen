@@ -96,12 +96,12 @@ if generate_jobs:
                 markdown_content = report.get("markdown", "")
 
                 # Export action bar
-                e1, e2, e3 = st.columns([1, 1, 2])
+                e1, e2, e3, e4 = st.columns([1, 1, 1, 1.5])
                 with e1:
                     try:
                         docx_bytes = markdown_to_docx(markdown_content, title=report.get("title", report_type))
                         st.download_button(
-                            "📥 Download DOCX",
+                            "📥 DOCX",
                             data=docx_bytes,
                             file_name=f"{report_type}_report.docx",
                             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -110,15 +110,28 @@ if generate_jobs:
                     except Exception as e:
                         st.warning(f"DOCX export: {e}")
                 with e2:
+                    try:
+                        from core.export.markdown_to_pdf import markdown_to_pdf
+                        pdf_bytes = markdown_to_pdf(markdown_content)
+                        st.download_button(
+                            "📕 PDF",
+                            data=pdf_bytes,
+                            file_name=f"{report_type}_report.pdf",
+                            mime="application/pdf",
+                            use_container_width=True,
+                        )
+                    except Exception as e:
+                        st.warning(f"PDF export: {e}")
+                with e3:
                     st.download_button(
-                        "📄 Download Markdown",
+                        "📄 Markdown",
                         data=markdown_content.encode("utf-8"),
                         file_name=f"{report_type}_report.md",
                         mime="text/markdown",
                         use_container_width=True,
                     )
-                with e3:
-                    if st.button("📚 View in Report Library →", use_container_width=True):
+                with e4:
+                    if st.button("📚 View in Library →", use_container_width=True):
                         st.switch_page("pages/6_Library.py")
 
                 # Verification flags drawer

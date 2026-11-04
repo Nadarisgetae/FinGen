@@ -246,3 +246,4 @@ class TestAssumptionPropagation:
         rev_bear_y5 = bear_res.metrics["is_projected"][-1]["revenue"]
 
         assert rev_bull_y5 > rev_base_y5 > rev_bear_y5
+

@@ -71,7 +71,7 @@ for report in reports:
     with st.expander(f"📄 **{r_title}** (v{r_version}) — {r_created}"):
         st.caption(f"Status: `{report.get('status', 'completed')}` | Type: `{report.get('report_type')}` | ID: `{report.get('id')}`")
 
-        c1, c2, c3, c4 = st.columns([1, 1, 1, 1])
+        c1, c2, c3, c4, c5 = st.columns([1, 1, 1, 1, 1])
 
         # 1. View
         with c1:
@@ -94,10 +94,25 @@ for report in reports:
             except Exception as e:
                 st.caption(f"DOCX err: {e}")
 
-        # 3. Download Markdown / PDF
+        # 3. Download PDF
         with c3:
+            try:
+                pdf_bytes = markdown_to_pdf(r_markdown)
+                st.download_button(
+                    "📕 PDF",
+                    data=pdf_bytes,
+                    file_name=f"{report.get('report_type', 'report')}_v{r_version}.pdf",
+                    mime="application/pdf",
+                    key=f"dl_pdf_{report['id']}",
+                    use_container_width=True,
+                )
+            except Exception as e:
+                st.caption(f"PDF err: {e}")
+
+        # 4. Download Markdown
+        with c4:
             st.download_button(
-                "📄 Markdown",
+                "📄 MD",
                 data=r_markdown.encode("utf-8"),
                 file_name=f"{report.get('report_type', 'report')}_v{r_version}.md",
                 mime="text/markdown",
@@ -105,8 +120,8 @@ for report in reports:
                 use_container_width=True,
             )
 
-        # 4. Delete
-        with c4:
+        # 5. Delete
+        with c5:
             if st.button("🗑️ Delete", key=f"del_{report['id']}", type="secondary"):
                 report_repo.delete(report["id"])
                 st.success("Deleted report.")

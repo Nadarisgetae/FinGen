@@ -177,3 +177,4 @@ class TestCreditMathAccuracy:
         fy24_rating = ir_res.metrics["FY24"]
         assert fy24_rating["grade"] in ["AAA", "AA", "A", "BBB", "BB", "B", "CCC", "CC", "D"]
         assert 0 <= fy24_rating["score"] <= 100
+
