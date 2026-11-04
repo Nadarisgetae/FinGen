@@ -148,20 +148,26 @@ class JobWorker:
         # 5. Export docx/pdf
         disclaimers = self._disclaimers_for(report_type)
         docx_bytes = markdown_to_docx(markdown, charts=charts, disclaimers=disclaimers)
-        pdf_bytes = markdown_to_pdf(markdown, charts=charts, disclaimers=disclaimers)
+        pdf_bytes = None
+        try:
+            pdf_bytes = markdown_to_pdf(markdown, charts=charts, disclaimers=disclaimers)
+        except Exception as e:
+            logger.warning(f"PDF export skipped: {e}")
 
         # 6. Upload to Storage + save report row
         from core.db.client import get_supabase_client
         supabase = get_supabase_client(use_service_key=True)
 
         docx_path = f"reports/{self.user_id}/{company_id}/{report_type}/report.docx"
-        pdf_path = f"reports/{self.user_id}/{company_id}/{report_type}/report.pdf"
+        pdf_path = f"reports/{self.user_id}/{company_id}/{report_type}/report.pdf" if pdf_bytes else None
 
-        try:
-            supabase.storage.from_("reports").upload(docx_path, docx_bytes, {"content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"})
-            supabase.storage.from_("reports").upload(pdf_path, pdf_bytes, {"content-type": "application/pdf"})
-        except Exception as e:
-            logger.warning(f"Storage upload failed: {e}")
+        if supabase:
+            try:
+                supabase.storage.from_("reports").upload(docx_path, docx_bytes, {"content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"})
+                if pdf_bytes:
+                    supabase.storage.from_("reports").upload(pdf_path, pdf_bytes, {"content-type": "application/pdf"})
+            except Exception as e:
+                logger.warning(f"Storage upload failed: {e}")
 
         report = self.report_repo.create_version(
             company_id=company_id,

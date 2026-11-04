@@ -5,6 +5,7 @@ Extends CaseGen's markdown_to_docx with chart embedding.
 
 import io
 import re
+from typing import Dict, List, Optional
 from docx import Document
 from docx.shared import Pt, Inches
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
