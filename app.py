@@ -20,11 +20,12 @@ def main():
     # ── Supabase connection ──────────────────────────────────────────
     if "supabase" not in st.session_state:
         try:
-            st.session_state["supabase"] = client_from_secrets(st.secrets)
-        except RuntimeError as e:
-            st.error(f"Configuration error: {e}")
-            st.info("Set SUPABASE_URL and SUPABASE_ANON_KEY in st.secrets, then rerun.")
-            st.stop()
+            st.session_state["supabase"] = client_from_secrets(getattr(st, "secrets", None))
+        except Exception:
+            st.session_state["supabase"] = None
+
+    if st.session_state["supabase"] is None:
+        st.sidebar.info("💡 Local Demo Mode (Offline In-Memory)")
 
     # ── Sidebar nav ──────────────────────────────────────────────────
     st.sidebar.title("📊 FinGen")

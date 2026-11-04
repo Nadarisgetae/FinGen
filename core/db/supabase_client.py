@@ -36,16 +36,16 @@ def client_from_secrets(st_secrets: Optional[Dict[str, Any]] = None) -> Client:
         or os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
     )
 
-    if not url or not anon_key:
-        raise RuntimeError(
-            "Supabase URL and anon key are required. "
-            "Set SUPABASE_URL and SUPABASE_ANON_KEY in st.secrets or environment."
-        )
+    if not url or not anon_key or create_client is None:
+        return None
 
-    return create_client(url, anon_key)
+    try:
+        return create_client(url, anon_key)
+    except Exception:
+        return None
 
 
-def service_client_from_secrets(st_secrets: Optional[Dict[str, Any]] = None) -> Client:
+def service_client_from_secrets(st_secrets: Optional[Dict[str, Any]] = None) -> Optional[Client]:
     """
     Create a Supabase client using the service role key.
     Use only for server-side operations (jobs, cache, storage, logs).
@@ -63,16 +63,16 @@ def service_client_from_secrets(st_secrets: Optional[Dict[str, Any]] = None) -> 
         or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     )
 
-    if not url or not service_key:
-        raise RuntimeError(
-            "Supabase service key is required for server-side operations. "
-            "Set SUPABASE_SERVICE_KEY in st.secrets or environment."
-        )
+    if not url or not service_key or create_client is None:
+        return None
 
-    return create_client(url, service_key)
+    try:
+        return create_client(url, service_key)
+    except Exception:
+        return None
 
 
-def get_service_client() -> Client:
+def get_service_client() -> Optional[Client]:
     """Return a process-level service client (cached)."""
     global _service_client
     if _service_client is None:

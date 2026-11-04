@@ -33,6 +33,8 @@ def get_supabase_client(use_service_key: bool = False) -> Client:
     
     if create_client is None:
         raise RuntimeError("The 'supabase' package is not installed. Install via 'pip install supabase'.")
+
+    if use_service_key:
         if _service_client is None:
             url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
             key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")

@@ -3,15 +3,20 @@ FinGen v2 — Base Repository Class
 """
 
 import logging
+import uuid
 from typing import Any, Dict, List, Optional, TypeVar, Generic
 from uuid import UUID
 from dataclasses import dataclass
+from collections import defaultdict
 
 from core.db.client import get_supabase_client
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
+
+# In-memory storage fallback when Supabase is not configured
+_in_memory_db: Dict[str, List[Dict]] = defaultdict(list)
 
 
 @dataclass
@@ -24,11 +29,18 @@ class PaginatedResult(Generic[T]):
 
 
 class BaseRepo:
-    """Base repository with common CRUD operations."""
+    """Base repository with common CRUD operations and offline in-memory fallback."""
     
     def __init__(self, table: str, use_service_key: bool = False, client=None):
         self.table = table
-        self.client = client if client is not None else get_supabase_client(use_service_key=use_service_key)
+        if client is not None:
+            self.client = client
+        else:
+            try:
+                self.client = get_supabase_client(use_service_key=use_service_key)
+            except Exception as e:
+                logger.debug(f"Running {table} in offline in-memory mode: {e}")
+                self.client = None
     
     def _to_dict(self, obj: Any) -> Dict:
         """Convert dataclass/Pydantic model to dict."""
@@ -38,13 +50,19 @@ class BaseRepo:
             import dataclasses
             return {f.name: getattr(obj, f.name) for f in dataclasses.fields(obj) if getattr(obj, f.name) is not None}
         elif isinstance(obj, dict):
-            return obj
+            return dict(obj)
         else:
             raise ValueError(f"Cannot convert {type(obj)} to dict")
     
     def create(self, data: Any, returning: bool = True) -> Optional[Dict]:
         """Insert a single record."""
         payload = self._to_dict(data)
+        if self.client is None:
+            if "id" not in payload:
+                payload["id"] = str(uuid.uuid4())
+            _in_memory_db[self.table].append(payload)
+            return payload
+
         try:
             query = self.client.table(self.table).insert(payload)
             if returning:
@@ -61,9 +79,19 @@ class BaseRepo:
         """Insert multiple records."""
         if not data:
             return []
-        payload = [self._to_dict(d) for d in data]
+        payloads = [self._to_dict(d) for d in data]
+
+        if self.client is None:
+            created = []
+            for p in payloads:
+                if "id" not in p:
+                    p["id"] = str(uuid.uuid4())
+                _in_memory_db[self.table].append(p)
+                created.append(p)
+            return created
+
         try:
-            query = self.client.table(self.table).insert(payload)
+            query = self.client.table(self.table).insert(payloads)
             if returning:
                 query = query.select()
             result = query.execute()
@@ -74,6 +102,12 @@ class BaseRepo:
     
     def get_by_id(self, id: UUID | str) -> Optional[Dict]:
         """Get single record by ID."""
+        if self.client is None:
+            for row in _in_memory_db[self.table]:
+                if str(row.get("id")) == str(id):
+                    return dict(row)
+            return None
+
         try:
             result = self.client.table(self.table).select("*").eq("id", str(id)).single().execute()
             return result.data
@@ -86,6 +120,14 @@ class BaseRepo:
     def update(self, id: UUID | str, data: Any) -> Optional[Dict]:
         """Update a record by ID."""
         payload = self._to_dict(data)
+
+        if self.client is None:
+            for i, row in enumerate(_in_memory_db[self.table]):
+                if str(row.get("id")) == str(id):
+                    _in_memory_db[self.table][i].update(payload)
+                    return dict(_in_memory_db[self.table][i])
+            return None
+
         try:
             result = self.client.table(self.table).update(payload).eq("id", str(id)).select().execute()
             if result.data:
@@ -97,6 +139,11 @@ class BaseRepo:
     
     def delete(self, id: UUID | str) -> bool:
         """Delete a record by ID."""
+        if self.client is None:
+            before_len = len(_in_memory_db[self.table])
+            _in_memory_db[self.table] = [r for r in _in_memory_db[self.table] if str(r.get("id")) != str(id)]
+            return len(_in_memory_db[self.table]) < before_len
+
         try:
             result = self.client.table(self.table).delete().eq("id", str(id)).execute()
             return True
@@ -113,6 +160,31 @@ class BaseRepo:
         offset: int = 0,
     ) -> List[Dict]:
         """List records with optional filters."""
+        if self.client is None:
+            rows = list(_in_memory_db[self.table])
+            if filters:
+                filtered = []
+                for r in rows:
+                    match = True
+                    for k, v in filters.items():
+                        if isinstance(v, list):
+                            if r.get(k) not in v:
+                                match = False
+                                break
+                        elif str(r.get(k)) != str(v):
+                            match = False
+                            break
+                    if match:
+                        filtered.append(r)
+                rows = filtered
+            if order_by:
+                rows.sort(key=lambda x: str(x.get(order_by, "")), reverse=desc)
+            if offset:
+                rows = rows[offset:]
+            if limit:
+                rows = rows[:limit]
+            return rows
+
         try:
             query = self.client.table(self.table).select("*")
             
@@ -139,6 +211,9 @@ class BaseRepo:
     
     def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
         """Count records matching filters."""
+        if self.client is None:
+            return len(self.list(filters))
+
         try:
             query = self.client.table(self.table).select("*", count="exact", head=True)
             
@@ -180,6 +255,9 @@ class BaseRepo:
     
     def execute_rpc(self, fn: str, params: Dict) -> Any:
         """Execute a stored procedure."""
+        if self.client is None:
+            return None
+
         try:
             result = self.client.rpc(fn, params).execute()
             return result.data

@@ -27,6 +27,12 @@ class DocumentRepo(BaseRepo):
         return self.list(filters, order_by="created_at", desc=True)
     
     def get_by_sha256(self, user_id: UUID, sha256: str) -> Optional[dict]:
+        if self.client is None:
+            from core.db.repos.base import _in_memory_db
+            for r in _in_memory_db["documents"]:
+                if str(r.get("user_id")) == str(user_id) and r.get("sha256") == sha256:
+                    return dict(r)
+            return None
         result = self.client.table(self.table).select("*").eq("user_id", str(user_id)).eq("sha256", sha256).single().execute()
         return result.data if result.data else None
     

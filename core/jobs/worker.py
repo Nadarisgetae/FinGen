@@ -155,8 +155,12 @@ class JobWorker:
             logger.warning(f"PDF export skipped: {e}")
 
         # 6. Upload to Storage + save report row
-        from core.db.client import get_supabase_client
-        supabase = get_supabase_client(use_service_key=True)
+        supabase = None
+        try:
+            from core.db.supabase_client import get_service_client
+            supabase = get_service_client()
+        except Exception:
+            pass
 
         docx_path = f"reports/{self.user_id}/{company_id}/{report_type}/report.docx"
         pdf_path = f"reports/{self.user_id}/{company_id}/{report_type}/report.pdf" if pdf_bytes else None
@@ -207,19 +211,49 @@ class JobWorker:
         self.job_repo.update_progress(job_id, 10)
         doc_repo.update_status(document_id, "processing")
 
-        # Fetch text from Storage
-        from core.db.client import get_supabase_client
-        supabase = get_supabase_client(use_service_key=True)
+        # Fetch text from Storage or local file
+        import os
+        supabase = None
         try:
-            text_response = supabase.storage.from_("uploads").download(doc["storage_path"])
-            text = text_response.decode("utf-8") if isinstance(text_response, bytes) else str(text_response)
+            from core.db.supabase_client import get_service_client
+            supabase = get_service_client()
         except Exception:
-            # If binary PDF, parse with Docling / PyMuPDF
-            from core.ingest.parsers import parse_pdf_bytes, parse_pdf_fast_bytes
+            pass
+
+        text = ""
+        if supabase:
             try:
-                text = parse_pdf_bytes(text_response)
+                text_response = supabase.storage.from_("uploads").download(doc["storage_path"])
+                text = text_response.decode("utf-8") if isinstance(text_response, bytes) else str(text_response)
             except Exception:
-                text = parse_pdf_fast_bytes(text_response)
+                try:
+                    from core.ingest.parsers import parse_pdf_bytes, parse_pdf_fast_bytes
+                    try:
+                        text = parse_pdf_bytes(text_response)
+                    except Exception:
+                        text = parse_pdf_fast_bytes(text_response)
+                except Exception as e:
+                    logger.warning(f"Storage download or parse failed: {e}")
+
+        # If text is still empty, check local filesystem
+        if not text:
+            local_path = doc.get("storage_path") or ""
+            if os.path.exists(local_path):
+                ext = local_path.rsplit(".", 1)[-1].lower()
+                with open(local_path, "rb") as f:
+                    file_bytes = f.read()
+                if ext in ("xlsx", "xls", "csv"):
+                    from core.ingest.parsers import spreadsheet_to_facts
+                    s_facts = spreadsheet_to_facts(file_bytes, local_path, as_facts=True, company_id=company_id, document_id=document_id)
+                    self.fact_repo.bulk_upsert_facts(s_facts, company_id, self.user_id, document_id)
+                    self.job_repo.complete(job_id, {"facts_extracted": len(s_facts)})
+                    doc_repo.update_status(document_id, "completed")
+                    return
+                elif ext == "pdf":
+                    from core.ingest.parsers import parse_pdf_fast_bytes
+                    text = parse_pdf_fast_bytes(file_bytes, local_path)
+                else:
+                    text = file_bytes.decode("utf-8", errors="replace")
 
         self.job_repo.update_progress(job_id, 30)
 
@@ -269,11 +303,31 @@ class JobWorker:
         from core.db.client import get_supabase_client
 
         document_id = payload["document_id"]
-        supabase = get_supabase_client(use_service_key=True)
+        supabase = None
+        try:
+            from core.db.supabase_client import get_service_client
+            supabase = get_service_client()
+        except Exception:
+            pass
 
         self.job_repo.update_progress(job_id, 5)
-        # Download audio
-        audio_bytes = supabase.storage.from_("uploads").download(payload["storage_path"])
+        # Download audio from Storage or read from local disk
+        audio_bytes = None
+        if supabase:
+            try:
+                audio_bytes = supabase.storage.from_("uploads").download(payload["storage_path"])
+            except Exception as e:
+                logger.warning(f"Audio storage download failed: {e}")
+
+        if not audio_bytes:
+            local_path = payload.get("storage_path") or ""
+            if os.path.exists(local_path):
+                with open(local_path, "rb") as f:
+                    audio_bytes = f.read()
+
+        if not audio_bytes:
+            self.job_repo.fail(job_id, "Audio file not accessible")
+            return
 
         self.job_repo.update_progress(job_id, 10)
         # Whisper transcription (blocking, but in worker thread)
@@ -296,7 +350,15 @@ class JobWorker:
         from core.db.repos.document_repo import DocumentRepo
         doc_repo = DocumentRepo()
         transcript_path = f"uploads/{self.user_id}/{document_id}/transcript.txt"
-        supabase.storage.from_("uploads").upload(transcript_path, transcript.encode("utf-8"))
+        if supabase:
+            try:
+                supabase.storage.from_("uploads").upload(transcript_path, transcript.encode("utf-8"))
+            except Exception as e:
+                logger.warning(f"Storage upload failed for transcript: {e}")
+        else:
+            os.makedirs(os.path.dirname(transcript_path), exist_ok=True)
+            with open(transcript_path, "wb") as f:
+                f.write(transcript.encode("utf-8"))
 
         self.job_repo.complete(job_id, {"transcript_path": transcript_path, "chars": len(transcript)})
 

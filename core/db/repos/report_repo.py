@@ -24,6 +24,7 @@ class ReportRepo(BaseRepo):
             "company_id": str(company_id),
             "user_id": str(user_id),
             "type": report_type,
+            "report_type": report_type,
             "version": version,
             "markdown": markdown,
             **kwargs

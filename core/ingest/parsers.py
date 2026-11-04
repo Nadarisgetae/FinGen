@@ -134,7 +134,7 @@ def spreadsheet_to_facts(
         if not tax_key:
             continue
 
-        stmt = extractor.statement_of_key.get(tax_key, "IS")
+        stmt = item.get("statement") or extractor.statement_of_key.get(tax_key, "IS")
         period = item.get("period", "FY24")
 
         fact = Fact(
@@ -147,6 +147,7 @@ def spreadsheet_to_facts(
             period_type=extractor._infer_period_type(period),
             value=float(item.get("value", 0.0)),
             unit=item.get("unit", "INR_cr"),
+            page=item.get("page"),
             confidence=1.0,  # Spreadsheet table structured input = 100% confidence
             source_text=f"{item.get('source', '')}: {raw_label}",
         )
@@ -169,7 +170,36 @@ def _extract_facts_from_dataframe(df, source: str) -> List[dict]:
 
     # Normalize headers
     df = df.copy()
-    df.columns = [str(c).strip() for c in df.columns]
+    df.columns = [str(c).strip().lower() for c in df.columns]
+
+    # Check if long-form facts table (e.g., line_item/raw_label, period, value)
+    if "value" in df.columns and ("line_item" in df.columns or "raw_label" in df.columns):
+        label_col = "line_item" if "line_item" in df.columns else "raw_label"
+        for _, row in df.iterrows():
+            val = row.get("value")
+            if pd.isna(val):
+                continue
+            try:
+                numeric = float(str(val).replace(",", "").replace("₹", "").replace("(", "-").replace(")", ""))
+            except (ValueError, TypeError):
+                continue
+            page_val = row.get("page")
+            page_int = None
+            if pd.notna(page_val):
+                try:
+                    page_int = int(float(page_val))
+                except (ValueError, TypeError):
+                    pass
+            facts.append({
+                "raw_label": str(row.get(label_col, "")).strip(),
+                "period": str(row.get("period", "FY24")).strip(),
+                "value": numeric,
+                "unit": str(row.get("unit", "INR_cr")).strip() or "INR_cr",
+                "statement": str(row.get("statement", "")).strip().upper() or None,
+                "page": page_int,
+                "source": source,
+            })
+        return facts
 
     # Detect year columns (e.g., "FY24", "2024", "Mar-24")
     year_cols = {}

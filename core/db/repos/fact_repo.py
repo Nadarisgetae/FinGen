@@ -45,6 +45,29 @@ class FactRepo(BaseRepo):
             payload.append(data)
         
         # Use upsert (on conflict do update)
+        if self.client is None:
+            from core.db.repos.base import _in_memory_db
+            import uuid
+            res = []
+            for p in payload:
+                existing_idx = next(
+                    (i for i, r in enumerate(_in_memory_db["facts"])
+                     if str(r.get("company_id")) == str(p.get("company_id"))
+                     and r.get("statement") == p.get("statement")
+                     and r.get("line_item") == p.get("line_item")
+                     and r.get("period") == p.get("period")),
+                    None
+                )
+                if existing_idx is not None:
+                    _in_memory_db["facts"][existing_idx].update(p)
+                    res.append(_in_memory_db["facts"][existing_idx])
+                else:
+                    if "id" not in p:
+                        p["id"] = str(uuid.uuid4())
+                    _in_memory_db["facts"].append(p)
+                    res.append(p)
+            return res
+
         try:
             result = self.client.table(self.table).upsert(
                 payload,
@@ -65,6 +88,25 @@ class FactRepo(BaseRepo):
         min_confidence: float = 0.0
     ) -> List[dict]:
         """Get facts for a company with flexible filters."""
+        if self.client is None:
+            from core.db.repos.base import _in_memory_db
+            results = []
+            for r in _in_memory_db["facts"]:
+                if str(r.get("company_id")) != str(company_id):
+                    continue
+                if periods and r.get("period") not in periods:
+                    continue
+                if statements and r.get("statement") not in statements:
+                    continue
+                if line_items and r.get("line_item") not in line_items:
+                    continue
+                if edited_only and not r.get("edited_by_user"):
+                    continue
+                if min_confidence > 0 and float(r.get("confidence", 1.0)) < min_confidence:
+                    continue
+                results.append(dict(r))
+            return results
+
         query = self.client.table(self.table).select("*").eq("company_id", str(company_id))
         
         if periods:

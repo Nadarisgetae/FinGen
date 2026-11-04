@@ -15,7 +15,7 @@ if not company_id:
     st.error("No company in session. Upload documents first.")
     st.stop()
 
-user_id = st.session_state["user"]["id"]
+user_id = st.session_state.get("user", {}).get("id", "local-user")
 repo = AssumptionRepo()
 
 DRIVERS = [
@@ -30,6 +30,45 @@ DRIVERS = [
     ("terminal_growth_rate", "Terminal growth rate", "percentage"),
     ("exit_multiple", "Exit multiple (EV/EBITDA)", "times"),
 ]
+
+DEFAULT_DRIVER_VALUES = {
+    "base": {
+        "revenue_growth": 0.10,
+        "ebitda_margin": 0.18,
+        "da_pct_revenue": 0.04,
+        "capex_pct_revenue": 0.05,
+        "tax_rate": 0.25,
+        "finance_costs_pct_debt": 0.08,
+        "wc_pct_revenue_change": 0.10,
+        "wacc": 0.11,
+        "terminal_growth_rate": 0.04,
+        "exit_multiple": 10.0,
+    },
+    "bull": {
+        "revenue_growth": 0.15,
+        "ebitda_margin": 0.22,
+        "da_pct_revenue": 0.04,
+        "capex_pct_revenue": 0.06,
+        "tax_rate": 0.25,
+        "finance_costs_pct_debt": 0.07,
+        "wc_pct_revenue_change": 0.08,
+        "wacc": 0.10,
+        "terminal_growth_rate": 0.05,
+        "exit_multiple": 12.0,
+    },
+    "bear": {
+        "revenue_growth": 0.05,
+        "ebitda_margin": 0.12,
+        "da_pct_revenue": 0.05,
+        "capex_pct_revenue": 0.04,
+        "tax_rate": 0.25,
+        "finance_costs_pct_debt": 0.09,
+        "wc_pct_revenue_change": 0.12,
+        "wacc": 0.12,
+        "terminal_growth_rate": 0.03,
+        "exit_multiple": 8.0,
+    },
+}
 
 SCENARIOS = ["bull", "base", "bear"]
 PROJECTION_YEARS = ["FY26", "FY27", "FY28", "FY29", "FY30"]
@@ -46,9 +85,12 @@ for scenario in SCENARIOS:
             cols = st.columns([2, 1, 1, 3])
             cols[0].markdown(f"**{label}**")
             default = existing.get(scenario, {}).get(driver, {}).get(PROJECTION_YEARS[0], {}).get("value", None)
+            if default is None:
+                default = DEFAULT_DRIVER_VALUES.get(scenario, {}).get(driver, 0.0)
+
             value = cols[1].number_input(
                 f"{label} ({scenario})",
-                value=default if default is not None else 0.0,
+                value=float(default),
                 format="%.4f",
                 key=f"{scenario}_{driver}_val",
                 label_visibility="collapsed",
@@ -80,28 +122,35 @@ for scenario in SCENARIOS:
 st.markdown("### Projection Horizon")
 projection_years = st.number_input("Years to project", min_value=1, max_value=10, value=5)
 
+
+def _save_current_assumptions():
+    buffer = st.session_state.get("assumption_buffer", {})
+    by_scenario = {}
+    for key, val in buffer.items():
+        scenario, driver = key.split("|")
+        by_scenario.setdefault(scenario, []).append({
+            "driver": driver,
+            "period": "projection",
+            "value": val["value"],
+            "unit": val["unit"],
+            "rationale": val["rationale"],
+            "is_manual": True,
+        })
+    for scenario, assumptions in by_scenario.items():
+        repo.upsert_scenario(company_id, user_id, scenario, assumptions)
+    return len(by_scenario)
+
+
 st.markdown("---")
-col1, col2 = st.columns([1, 3])
+col1, col2, col3 = st.columns([1, 1, 2])
 with col1:
     if st.button("← Back to Review Data"):
         st.switch_page("pages/3_Review_Data.py")
 with col2:
-    if st.button("Save Assumptions", type="primary"):
-        buffer = st.session_state.get("assumption_buffer", {})
-        by_scenario = {}
-        for key, val in buffer.items():
-            scenario, driver = key.split("|")
-            by_scenario.setdefault(scenario, []).append({
-                "driver": driver,
-                "period": "projection",
-                "value": val["value"],
-                "unit": val["unit"],
-                "rationale": val["rationale"],
-                "is_manual": True,
-            })
-        for scenario, assumptions in by_scenario.items():
-            repo.upsert_scenario(company_id, user_id, scenario, assumptions)
-        st.success(f"Saved assumptions for {len(by_scenario)} scenario(s).")
-
-    if st.button("Generate Report →", type="primary"):
+    if st.button("Save Assumptions"):
+        n = _save_current_assumptions()
+        st.success(f"Saved assumptions for {n} scenario(s).")
+with col3:
+    if st.button("Generate Report →", type="primary", use_container_width=True):
+        _save_current_assumptions()
         st.switch_page("pages/5_Generate.py")

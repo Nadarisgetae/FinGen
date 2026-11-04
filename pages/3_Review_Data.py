@@ -34,11 +34,50 @@ if active_jobs:
     if st.button("Refresh status"):
         st.rerun()
 
+def _facts_from_rows(rows):
+    facts = []
+    for r in rows:
+        try:
+            facts.append(Fact(
+                company_id=r.get("company_id"),
+                document_id=r.get("document_id"),
+                statement=r.get("statement"),
+                line_item=r.get("line_item"),
+                raw_label=r.get("raw_label"),
+                period=r.get("period"),
+                period_type=r.get("period_type"),
+                value=float(r.get("value", 0)),
+                unit=r.get("unit", "INR_cr"),
+                scaling_factor=float(r.get("scaling_factor", 1.0)),
+                page=r.get("page"),
+                confidence=float(r.get("confidence", 1.0)),
+                edited_by_user=bool(r.get("edited_by_user", False)),
+                source_text=r.get("source_text"),
+                meta=r.get("meta") or {},
+            ))
+        except Exception:
+            continue
+    return facts
+
+
 # ── Load facts ─────────────────────────────────────────────────────
 facts_data = fact_repo.get_by_company_period(company_id=company_id)
 
 if not facts_data:
-    st.info("No facts extracted yet. Wait for extraction jobs to complete, then refresh.")
+    st.info("No facts extracted yet for this company. Upload documents or load sample data from the Upload page.")
+    c_back, c_load = st.columns(2)
+    if c_back.button("← Go to Upload Page"):
+        st.switch_page("pages/1_Upload.py")
+    if c_load.button("⚡ Load Tata Steel FY24 Sample Data"):
+        import os
+        from core.ingest.parsers import spreadsheet_to_facts
+        fixture_path = os.path.join("tests", "fixtures", "tata_steel", "expected_facts.csv")
+        if os.path.exists(fixture_path):
+            with open(fixture_path, "rb") as f:
+                csv_bytes = f.read()
+            s_facts = spreadsheet_to_facts(csv_bytes, "expected_facts.csv", as_facts=True, company_id=company_id)
+            fact_repo.bulk_upsert_facts(s_facts, company_id, user_id, "demo-doc-1")
+            st.rerun()
     st.stop()
 
 # ── Validation ─────────────────────────────────────────────────────
@@ -148,29 +187,3 @@ with col2:
     )
     if proceed:
         st.switch_page("pages/4_Thesis_Assumptions.py")
-
-
-def _facts_from_rows(rows):
-    facts = []
-    for r in rows:
-        try:
-            facts.append(Fact(
-                company_id=r.get("company_id"),
-                document_id=r.get("document_id"),
-                statement=r.get("statement"),
-                line_item=r.get("line_item"),
-                raw_label=r.get("raw_label"),
-                period=r.get("period"),
-                period_type=r.get("period_type"),
-                value=float(r.get("value", 0)),
-                unit=r.get("unit", "INR_cr"),
-                scaling_factor=float(r.get("scaling_factor", 1.0)),
-                page=r.get("page"),
-                confidence=float(r.get("confidence", 1.0)),
-                edited_by_user=bool(r.get("edited_by_user", False)),
-                source_text=r.get("source_text"),
-                meta=r.get("meta") or {},
-            ))
-        except Exception:
-            continue
-    return facts

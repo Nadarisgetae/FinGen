@@ -33,6 +33,29 @@ class AssumptionRepo(BaseRepo):
                 "is_manual": a.get("is_manual", True),
             })
         
+        if self.client is None:
+            from core.db.repos.base import _in_memory_db
+            import uuid
+            res = []
+            for p in payload:
+                match_idx = next(
+                    (i for i, r in enumerate(_in_memory_db["assumptions"])
+                     if str(r.get("company_id")) == str(p.get("company_id"))
+                     and r.get("scenario") == p.get("scenario")
+                     and r.get("driver") == p.get("driver")
+                     and r.get("period") == p.get("period")),
+                    None
+                )
+                if match_idx is not None:
+                    _in_memory_db["assumptions"][match_idx].update(p)
+                    res.append(_in_memory_db["assumptions"][match_idx])
+                else:
+                    if "id" not in p:
+                        p["id"] = str(uuid.uuid4())
+                    _in_memory_db["assumptions"].append(p)
+                    res.append(p)
+            return res
+
         try:
             result = self.client.table(self.table).upsert(
                 payload,
@@ -54,10 +77,24 @@ class AssumptionRepo(BaseRepo):
         Get assumptions formatted for forecast engine.
         Returns: {scenario: {driver: {period: value}}}
         """
-        filters = {"company_id": str(company_id)}
-        if scenarios:
-            filters["scenario"] = scenarios  # This won't work directly, need in_
-        
+        if self.client is None:
+            from core.db.repos.base import _in_memory_db
+            output = {}
+            for row in _in_memory_db["assumptions"]:
+                if str(row.get("company_id")) != str(company_id):
+                    continue
+                if scenarios and row.get("scenario") not in scenarios:
+                    continue
+                sc = row["scenario"]
+                dr = row["driver"]
+                pd = row["period"]
+                if sc not in output:
+                    output[sc] = {}
+                if dr not in output[sc]:
+                    output[sc][dr] = {}
+                output[sc][dr][pd] = {"value": row["value"], "unit": row.get("unit")}
+            return output
+
         query = self.client.table(self.table).select("*").eq("company_id", str(company_id))
         if scenarios:
             query = query.in_("scenario", scenarios)
@@ -79,6 +116,14 @@ class AssumptionRepo(BaseRepo):
         return output
     
     def delete_scenario(self, company_id: UUID, scenario: str) -> bool:
+        if self.client is None:
+            from core.db.repos.base import _in_memory_db
+            _in_memory_db["assumptions"] = [
+                r for r in _in_memory_db["assumptions"]
+                if not (str(r.get("company_id")) == str(company_id) and r.get("scenario") == scenario)
+            ]
+            return True
+
         self.client.table(self.table).delete().eq("company_id", str(company_id)).eq("scenario", scenario).execute()
         return True
 
