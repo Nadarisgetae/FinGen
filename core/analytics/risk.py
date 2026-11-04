@@ -262,7 +262,7 @@ def concentration_risk(facts: List[Fact]) -> AnalyticsResult:
     """
     segment_revenues = defaultdict(float)
     for f in facts:
-        if f.statement == "SEGMENT" and f.line_item == "segment_revenue":
+        if f.statement == "SEGMENT" and f.line_item in ("segment_revenue", "revenue"):
             # Use raw_label or meta as segment identifier
             key = f.raw_label or (f.meta or {}).get("segment_name") or f.period
             segment_revenues[key] += f.value

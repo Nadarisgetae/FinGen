@@ -40,7 +40,7 @@ PROMPTS_DIR = Path("prompts")
 class ReportGenerator:
     """Generates a report from a template + facts + assumptions."""
 
-    def __init__(self, template_path: str):
+    def __init__(self, template_path: str, router=None, executor=None):
         with open(template_path, encoding="utf-8") as f:
             self.template = json.load(f)
 
@@ -57,19 +57,31 @@ class ReportGenerator:
                 ppath = PROMPTS_DIR / prompt_file
                 if ppath.exists():
                     self.prompts[section["key"]] = ppath.read_text(encoding="utf-8")
+                else:
+                    logger.warning(f"Prompt file not found: {ppath}")
 
-        self.router = get_router()
-        self.executor = get_executor()
+        self._router = router
+        self.executor = executor or get_executor()
+
+    @property
+    def router(self):
+        if self._router is None:
+            try:
+                self._router = get_router()
+            except Exception as e:
+                logger.debug(f"Router not yet initialized: {e}")
+        return self._router
 
     def generate(
         self,
-        company_id,
-        user_id,
-        facts: List[Fact],
+        company_id=None,
+        user_id=None,
+        facts: List[Fact] = None,
         assumptions: Dict[str, Dict] = None,
         ui_config: Dict = None,
         context: Dict = None,
         on_progress: Optional[Callable[[int, int, str], None]] = None,
+        router=None,
     ) -> Dict[str, Any]:
         """
         Generate the full report.
@@ -81,10 +93,12 @@ class ReportGenerator:
             "verification": VerificationResult,
         }
         """
+        facts = facts or []
         sections = self.template.get("sections", [])
         total = len(sections)
         section_outputs = {}
         analytics_results = {}
+        active_router = router or self.router
 
         for i, section in enumerate(sections):
             section_key = section["key"]
@@ -96,12 +110,16 @@ class ReportGenerator:
             try:
                 # 1. Compute analytics for this section
                 section_analytics = {}
+                section_assumptions = (assumptions or {}).get(section_key)
+                if section_assumptions is None and isinstance(assumptions, dict):
+                    section_assumptions = assumptions
+
                 for analytics_name in section.get("analytics", []):
                     try:
                         result = self.executor.execute(
                             analytics_name,
                             facts=facts,
-                            assumptions=(assumptions or {}).get(section_key),
+                            assumptions=section_assumptions,
                             context=context,
                         )
                         section_analytics[analytics_name] = result
@@ -116,13 +134,16 @@ class ReportGenerator:
 
                 # Gather section-relevant facts
                 needs = section.get("needs", [])
-                section_facts = [
-                    f for f in facts
-                    if f"{f.statement}.{f.line_item}" in needs
-                ]
+                if needs:
+                    section_facts = [
+                        f for f in facts
+                        if f"{f.statement}.{f.line_item}" in needs or f.line_item in needs
+                    ]
+                else:
+                    section_facts = list(facts)
 
                 system = (
-                    f"You are a financial report writer.\n"
+                    f"You are a professional financial report writer.\n"
                     f"Section: {section_title}\n"
                     f"Max words: {max_words}\n"
                     f"Audience: {(ui_config or {}).get('audience', 'professional')}\n"
@@ -151,14 +172,16 @@ class ReportGenerator:
                         name: res.metrics if hasattr(res, "metrics") else res
                         for name, res in section_analytics.items()
                     },
-                    "assumptions": (assumptions or {}).get(section_key, {}),
+                    "assumptions": section_assumptions or {},
                 }
 
                 messages = build_writing_prompt(system, f"Write the '{section_title}' section.", user_context)
 
                 # 3. LLM write
                 try:
-                    content = self.router.call(TaskType.WRITE, messages)
+                    if active_router is None:
+                        raise RuntimeError("LLM Router is not available.")
+                    content = active_router.call(TaskType.WRITE, messages)
                 except Exception as e:
                     logger.error(f"LLM write failed for {section_key}: {e}")
                     content = f"_[Section generation failed: {e}]_"
@@ -170,7 +193,7 @@ class ReportGenerator:
                 section_outputs[section_key] = f"_[Section failed: {e}]_"
 
         # 4. Assemble document
-        markdown = self._assemble(section_outputs)
+        markdown = self._assemble(section_outputs, context=context, ui_config=ui_config)
 
         # 5. Verify (code-first)
         verifier = Verifier(facts=facts, analytics_results=analytics_results)
@@ -189,34 +212,72 @@ class ReportGenerator:
             "verification": verification,
         }
 
-    def _assemble(self, section_outputs: Dict[str, str]) -> str:
-        """Assemble sections into final markdown document."""
-        parts = [f"# {self.template.get('title', 'Report')}\n"]
+    def _assemble(
+        self,
+        section_outputs: Dict[str, str],
+        context: Optional[Dict] = None,
+        ui_config: Optional[Dict] = None,
+    ) -> str:
+        """Assemble sections into final markdown document with headers and disclaimers."""
+        context = context or {}
+        ui_config = ui_config or {}
+
+        company_name = context.get("company_name") or context.get("name") or "Target Company"
+        ticker = context.get("ticker")
+        title = self.template.get("title", "Financial Report")
+
+        header_title = f"{title}: {company_name}"
+        if ticker:
+            header_title += f" ({ticker})"
+
+        meta_line = []
+        if context.get("period") or context.get("fiscal_year"):
+            meta_line.append(f"**Period:** {context.get('period') or context.get('fiscal_year')}")
+        if ui_config.get("currency") or ui_config.get("unit"):
+            unit = ui_config.get("unit", "INR_cr")
+            currency = ui_config.get("currency", "INR")
+            meta_line.append(f"**Currency/Unit:** {currency} ({unit})")
+        if ui_config.get("horizon"):
+            meta_line.append(f"**Horizon:** {ui_config.get('horizon')}")
+
+        parts = [f"# {header_title}\n"]
+        if meta_line:
+            parts.append(" | ".join(meta_line) + "\n\n---\n")
 
         for section in self.template.get("sections", []):
             key = section["key"]
-            title = section.get("title", key)
+            sec_title = section.get("title", key)
             content = section_outputs.get(key, "")
             if content:
                 # Strip any heading the LLM may have added
                 import re
                 content = re.sub(
-                    rf"^\s*#{{1,3}}\s*{re.escape(title)}.*\n+",
+                    rf"^\s*#{{1,3}}\s*{re.escape(sec_title)}.*\n+",
                     "",
                     content,
                     flags=re.IGNORECASE,
                 )
-                parts.append(f"\n## {title}\n\n{content.strip()}\n")
+                parts.append(f"\n## {sec_title}\n\n{content.strip()}\n")
+
+        # Disclaimers
+        if ui_config.get("include_disclaimer", True):
+            parts.append(
+                "\n---\n\n### Disclaimers & Regulatory Notes\n"
+                "This report is generated automatically by FinGen for informational purposes only. "
+                "It does not constitute an investment recommendation, financial advice, or an offer to buy or sell securities "
+                "under SEBI (Research Analysts) Regulations, 2014 or any applicable jurisdiction. "
+                "All financial numbers reflect reported disclosures and deterministic models."
+            )
 
         return "\n".join(parts)
 
 
-def load_template(report_type: str) -> "ReportGenerator":
+def load_template(report_type: str, router=None, executor=None) -> "ReportGenerator":
     """Load a report template by type."""
     path = TEMPLATES_DIR / f"{report_type}.json"
     if not path.exists():
         raise FileNotFoundError(f"Template not found: {path}")
-    return ReportGenerator(str(path))
+    return ReportGenerator(str(path), router=router, executor=executor)
 
 
 def list_templates() -> List[str]:

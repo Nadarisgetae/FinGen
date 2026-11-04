@@ -289,10 +289,23 @@ def multiples_valuation(
     return AnalyticsResult(metrics=results, metadata=metadata)
 
 
-def football_field(dcf_result: Dict, multiples_result: Dict, context: Dict = None) -> AnalyticsResult:
+def football_field(
+    dcf_result: Dict = None,
+    multiples_result: Dict = None,
+    context: Dict = None,
+    facts: List[Fact] = None,
+    assumptions: Dict = None,
+) -> AnalyticsResult:
     """
     Football field chart data: valuation ranges from multiple methods.
     """
+    if dcf_result is None and facts:
+        res = dcf_fcff(facts, assumptions)
+        dcf_result = res.metrics if hasattr(res, "metrics") else res
+    if multiples_result is None and facts:
+        res = multiples_valuation(facts, assumptions)
+        multiples_result = res.metrics if hasattr(res, "metrics") else res
+
     ranges = []
     
     # DCF range (WACC sensitivity ±2%)
@@ -346,8 +359,8 @@ def football_field(dcf_result: Dict, multiples_result: Dict, context: Dict = Non
 
 
 def sensitivity_grid(
-    dcf_result: Dict,
-    facts: List[Fact],
+    dcf_result: Dict = None,
+    facts: List[Fact] = None,
     assumptions: Dict = None,
     wacc_range: List[float] = None,
     growth_range: List[float] = None,

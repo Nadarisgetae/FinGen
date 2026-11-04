@@ -62,8 +62,13 @@ class AnalyticsSpec:
     
     def validate_facts_available(self, available_facts: List[Fact]) -> List[str]:
         """Check which required facts are missing. Returns list of missing keys."""
-        available_keys = {f"{f.statement}.{f.line_item}" for f in available_facts}
-        missing = [req for req in self.requires if req not in available_keys]
+        available_qualified = {f"{f.statement}.{f.line_item}" for f in available_facts}
+        available_items = {f.line_item for f in available_facts}
+        missing = []
+        for req in self.requires:
+            req_item = req.split(".")[-1]
+            if req not in available_qualified and req_item not in available_items:
+                missing.append(req)
         return missing
 
 
@@ -111,12 +116,6 @@ ANALYTICS_REGISTRY: Dict[str, AnalyticsSpec] = {
         description="Gross margin, EBITDA margin, PAT margin, ROE, ROCE, ROIC",
         requires=[
             "IS.revenue_from_operations",
-            "IS.cost_of_goods_sold",
-            "IS.ebitda",
-            "IS.profit_after_tax",
-            "BS.total_equity",
-            "BS.total_assets",
-            "BS.total_debt",
         ],
         returns="Dict[str, Dict[str, float]]",  # period -> {ratio_name: value}
         period_alignment=PeriodAlignment.SAME,
@@ -128,11 +127,7 @@ ANALYTICS_REGISTRY: Dict[str, AnalyticsSpec] = {
         description="Debt/Equity, Net Debt/EBITDA, Debt/Assets, Interest Coverage",
         requires=[
             "BS.total_debt",
-            "BS.cash_and_equivalents",
             "BS.total_equity",
-            "BS.total_assets",
-            "IS.ebitda",
-            "IS.finance_costs",
         ],
         returns="Dict[str, Dict[str, float]]",
         period_alignment=PeriodAlignment.SAME,
@@ -144,11 +139,6 @@ ANALYTICS_REGISTRY: Dict[str, AnalyticsSpec] = {
         description="Asset turnover, inventory days, receivable days, payable days, WC cycle",
         requires=[
             "IS.revenue_from_operations",
-            "IS.cost_of_goods_sold",
-            "BS.total_assets",
-            "BS.inventory",
-            "BS.trade_receivables",
-            "BS.trade_payables",
         ],
         returns="Dict[str, Dict[str, float]]",
         period_alignment=PeriodAlignment.SAME,
@@ -174,22 +164,7 @@ ANALYTICS_REGISTRY: Dict[str, AnalyticsSpec] = {
         description="IS and BS as percentage of revenue / total assets",
         requires=[
             "IS.revenue_from_operations",
-            "IS.cost_of_goods_sold",
-            "IS.employee_benefits_expense",
-            "IS.other_expenses",
-            "IS.ebitda",
-            "IS.depreciation_amortisation",
-            "IS.finance_costs",
-            "IS.profit_before_tax",
-            "IS.tax_expense",
-            "IS.profit_after_tax",
             "BS.total_assets",
-            "BS.total_equity",
-            "BS.total_debt",
-            "BS.cash_and_equivalents",
-            "BS.inventory",
-            "BS.trade_receivables",
-            "BS.trade_payables",
         ],
         returns="Dict[str, Dict[str, float]]",  # period -> {line_item: pct}
         period_alignment=PeriodAlignment.SAME,
@@ -285,15 +260,6 @@ ANALYTICS_REGISTRY: Dict[str, AnalyticsSpec] = {
         description="DCF valuation using FCFF: PV of projected FCFF + Terminal Value",
         requires=[
             "IS.revenue_from_operations",
-            "IS.ebitda",
-            "IS.depreciation_amortisation",
-            "IS.finance_costs",
-            "IS.tax_expense",
-            "CF.capex",
-            "CF.change_in_working_capital",
-            "BS.total_debt",
-            "BS.cash_and_equivalents",
-            "BS.total_equity",
         ],
         returns="Dict[str, Any]",  # {enterprise_value, equity_value, pv_fcf, tv_gordon, tv_exit_multiple, wacc, assumptions}
         period_alignment=PeriodAlignment.PROJECTED,
@@ -309,12 +275,7 @@ ANALYTICS_REGISTRY: Dict[str, AnalyticsSpec] = {
         name="multiples_valuation",
         description="Relative valuation using peer multiples (EV/EBITDA, P/E, P/B, EV/Sales)",
         requires=[
-            "IS.ebitda",
-            "IS.profit_after_tax",
-            "BS.total_equity",
             "IS.revenue_from_operations",
-            "BS.total_debt",
-            "BS.cash_and_equivalents",
         ],
         returns="Dict[str, Any]",  # {implied_ev_ebitda, implied_pe, implied_pb, implied_ev_sales, peer_median_*}
         period_alignment=PeriodAlignment.CROSS_SECTIONAL,
@@ -327,7 +288,7 @@ ANALYTICS_REGISTRY: Dict[str, AnalyticsSpec] = {
     "football_field": AnalyticsSpec(
         name="football_field",
         description="Football field chart data: DCF range, multiples range, 52-week range, analyst targets",
-        requires=["dcf_fcff", "multiples_valuation"],  # Depends on other analytics
+        requires=[],
         returns="Dict[str, List[Dict]]",  # {ranges: [{label, low, high, color}]}
         period_alignment=PeriodAlignment.CROSS_SECTIONAL,
         output_unit="INR_cr",
@@ -336,7 +297,7 @@ ANALYTICS_REGISTRY: Dict[str, AnalyticsSpec] = {
     "sensitivity_grid": AnalyticsSpec(
         name="sensitivity_grid",
         description="2D sensitivity table: Equity value vs (WACC x Terminal Growth) or (WACC x Exit Multiple)",
-        requires=["dcf_fcff"],
+        requires=[],
         returns="Dict[str, Any]",  # {wacc_range, growth_range, grid: [[values]]}
         period_alignment=PeriodAlignment.PROJECTED,
         output_unit="INR_cr",
@@ -350,23 +311,7 @@ ANALYTICS_REGISTRY: Dict[str, AnalyticsSpec] = {
         name="project_is_bs_cf",
         description="5-year projected Income Statement, Balance Sheet, Cash Flow from assumptions",
         requires=[
-            # Historical base (latest period)
             "IS.revenue_from_operations",
-            "IS.cost_of_goods_sold",
-            "IS.employee_benefits_expense",
-            "IS.other_expenses",
-            "IS.depreciation_amortisation",
-            "IS.finance_costs",
-            "IS.tax_expense",
-            "BS.total_assets",
-            "BS.total_equity",
-            "BS.total_debt",
-            "BS.cash_and_equivalents",
-            "BS.inventory",
-            "BS.trade_receivables",
-            "BS.trade_payables",
-            "CF.capex",
-            "CF.change_in_working_capital",
         ],
         returns="Dict[str, Any]",  # {is_projected, bs_projected, cf_projected, assumptions_used}
         period_alignment=PeriodAlignment.PROJECTED,
@@ -406,7 +351,7 @@ ANALYTICS_REGISTRY: Dict[str, AnalyticsSpec] = {
     "concentration_risk": AnalyticsSpec(
         name="concentration_risk",
         description="Revenue/segment/customer/geography concentration (HHI, top-N share)",
-        requires=["SEGMENT.revenue"],
+        requires=["SEGMENT.segment_revenue"],
         returns="Dict[str, float]",
         period_alignment=PeriodAlignment.SAME,
         output_unit="ratio",
