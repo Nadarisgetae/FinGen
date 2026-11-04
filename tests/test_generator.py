@@ -238,3 +238,4 @@ class TestResilienceAndFallbacks:
         for sec_content in result["sections"].values():
             assert "Section generation failed" in sec_content
         assert "# Company Analysis" in result["markdown"]
+

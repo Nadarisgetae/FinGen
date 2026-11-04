@@ -109,9 +109,9 @@ def project_is_bs_cf(
     prev_debt = total_debt_base
     prev_equity = total_equity_base
     prev_retained = retained_earnings_base
-    prev_inventory = inventory_base
-    prev_receivables = receivables_base
-    prev_payables = payables_base
+    prev_inventory = inventory_base or (revenue_base * inventory_pct)
+    prev_receivables = receivables_base or (revenue_base * receivables_pct)
+    prev_payables = payables_base or (revenue_base * payables_pct)
     prev_da = da_base or 0
     
     for t in range(1, n_years + 1):

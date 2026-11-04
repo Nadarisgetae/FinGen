@@ -619,7 +619,19 @@ class AnalyticsExecutor:
             kwargs["assumptions"] = assumptions
         if "context" in sig.parameters and context:
             kwargs["context"] = context
-        
+
+        # Unpack matching keys from context if expected as direct parameters
+        if context and isinstance(context, dict):
+            for param_name in sig.parameters:
+                if param_name not in kwargs and param_name in context:
+                    kwargs[param_name] = context[param_name]
+
+        # Unpack matching keys from assumptions if expected as direct parameters
+        if assumptions and isinstance(assumptions, dict):
+            for param_name in sig.parameters:
+                if param_name not in kwargs and param_name in assumptions:
+                    kwargs[param_name] = assumptions[param_name]
+
         # For functions that expect specific fact lists, filter
         for param_name in sig.parameters:
             if param_name.endswith("_facts") or param_name in ["revenue_facts", "ebitda_facts", "debt_facts"]:
@@ -628,7 +640,7 @@ class AnalyticsExecutor:
                 matched = [f for f in facts if f.line_item.lower() == line_item.lower()]
                 if matched:
                     kwargs[param_name] = matched
-        
+
         return func(**kwargs)
 
 
