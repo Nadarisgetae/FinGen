@@ -303,13 +303,35 @@ def concentration_risk(facts: List[Fact]) -> AnalyticsResult:
 
 
 def sensitivity_analysis(
-    base_metric: float,
-    drivers: Dict[str, Dict[str, float]],
+    base_metric: float = None,
+    drivers: Dict[str, Dict[str, float]] = None,
+    facts: List[Fact] = None,
+    assumptions: Dict = None,
 ) -> AnalyticsResult:
     """
     Tornado chart data: impact of ±X% change in each driver on a metric.
     drivers = {"revenue_growth": {"low": -0.02, "high": 0.02, "impact_per_unit": 0.8}, ...}
     """
+    if base_metric is None:
+        if facts:
+            grouped = _group_by_period(facts)
+            periods = sorted(grouped.keys())
+            if periods:
+                latest = periods[-1]
+                base_metric = _get(grouped, latest, "ebitda") or _get(grouped, latest, "revenue_from_operations") or 100.0
+            else:
+                base_metric = 100.0
+        else:
+            base_metric = 100.0
+
+    if not drivers:
+        drivers = {
+            "volume_growth": {"low": -0.05, "high": 0.05, "impact_per_unit": 1.2},
+            "pricing_power": {"low": -0.03, "high": 0.03, "impact_per_unit": 1.5},
+            "raw_material_cost": {"low": 0.04, "high": -0.04, "impact_per_unit": 0.8},
+            "interest_rates": {"low": 0.02, "high": -0.02, "impact_per_unit": 0.4},
+        }
+
     tornado = []
     for driver, spec in drivers.items():
         low_impact = base_metric * spec.get("impact_per_unit", 1.0) * spec["low"]

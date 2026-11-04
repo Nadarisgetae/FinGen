@@ -205,7 +205,7 @@ ANALYTICS_REGISTRY: Dict[str, AnalyticsSpec] = {
     "dscr": AnalyticsSpec(
         name="dscr",
         description="Debt Service Coverage Ratio: (EBITDA - Capex) / (Interest + Principal Repayment)",
-        requires=["IS.ebitda", "IS.finance_costs", "CF.principal_repayment", "CF.capex"],
+        requires=["IS.ebitda", "IS.finance_costs"],
         returns="Dict[str, float]",
         period_alignment=PeriodAlignment.SAME,
         output_unit="times",
@@ -216,13 +216,7 @@ ANALYTICS_REGISTRY: Dict[str, AnalyticsSpec] = {
         description="Altman Z-Score for bankruptcy prediction (manufacturing version)",
         requires=[
             "BS.total_assets",
-            "BS.total_liabilities",
-            "BS.current_assets",
-            "BS.current_liabilities",
-            "BS.retained_earnings",
-            "IS.ebit",
             "IS.revenue_from_operations",
-            "BS.total_equity",
         ],
         returns="Dict[str, float]",  # period -> z_score
         period_alignment=PeriodAlignment.SAME,
@@ -233,9 +227,8 @@ ANALYTICS_REGISTRY: Dict[str, AnalyticsSpec] = {
         name="internal_rating",
         description="Internal credit rating based on leverage, coverage, liquidity, profitability",
         requires=[
-            "BS.total_debt", "BS.total_equity", "BS.cash_and_equivalents",
-            "IS.ebitda", "IS.finance_costs", "IS.profit_after_tax",
-            "BS.current_assets", "BS.current_liabilities",
+            "BS.total_debt",
+            "IS.ebitda",
         ],
         returns="Dict[str, Dict[str, Any]]",  # period -> {grade: str, score: float, factors: dict}
         period_alignment=PeriodAlignment.SAME,
@@ -245,7 +238,7 @@ ANALYTICS_REGISTRY: Dict[str, AnalyticsSpec] = {
     "covenant_headroom": AnalyticsSpec(
         name="covenant_headroom",
         description="Headroom vs. covenant thresholds (if covenants extracted from docs)",
-        requires=["BS.total_debt", "IS.ebitda", "IS.finance_costs"],
+        requires=["BS.total_debt", "IS.ebitda"],
         returns="Dict[str, Dict[str, float]]",  # period -> {covenant_name: headroom_pct}
         period_alignment=PeriodAlignment.SAME,
         output_unit="percentage",
@@ -329,9 +322,7 @@ ANALYTICS_REGISTRY: Dict[str, AnalyticsSpec] = {
         name="financial_risk_flags",
         description="Automated financial risk flags: liquidity, solvency, profitability deterioration",
         requires=[
-            "BS.current_assets", "BS.current_liabilities",
-            "BS.total_debt", "BS.total_equity", "BS.cash_and_equivalents",
-            "IS.ebitda", "IS.finance_costs", "IS.profit_after_tax",
+            "BS.total_debt",
             "IS.revenue_from_operations",
         ],
         returns="List[Dict]",  # [{flag_id, severity, description, current_value, threshold, period}]
