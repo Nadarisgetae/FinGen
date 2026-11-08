@@ -1,30 +1,36 @@
 # FinGen v2 — Model Routing Config
-# AUTO-POPULATED by core/llm/discover_models.py at startup
-# DO NOT EDIT MANUALLY — run discover_models.py to refresh
+# OpenRouter Free Models (strictly non-Google: Qwen, Llama, DeepSeek, Nemotron, Mistral)
 
 tasks:
   extract:
     - nvidia/nemotron-3-ultra:free
     - qwen/qwen-2.5-72b-instruct:free
+    - meta-llama/llama-3.3-70b-instruct:free
     - meta-llama/llama-3.1-70b-instruct:free
+    - deepseek/deepseek-chat:free
     - openrouter/auto
   longdoc:
     - nvidia/nemotron-3-ultra:free
     - qwen/qwen-2.5-72b-instruct:free
-    - google/gemini-flash-1.5:free
+    - meta-llama/llama-3.1-70b-instruct:free
+    - mistralai/mistral-nemo:free
     - openrouter/auto
   write:
     - qwen/qwen-2.5-72b-instruct:free
-    - google/gemma-2-27b-it:free
+    - meta-llama/llama-3.3-70b-instruct:free
     - meta-llama/llama-3.1-70b-instruct:free
+    - deepseek/deepseek-chat:free
+    - mistralai/mistral-small-24b-instruct-2501:free
     - openrouter/auto
   verify:
-    - google/gemma-2-27b-it:free
     - qwen/qwen-2.5-72b-instruct:free
+    - meta-llama/llama-3.3-70b-instruct:free
+    - deepseek/deepseek-chat:free
+    - mistralai/mistral-small-24b-instruct-2501:free
     - openrouter/auto
 
-fallback_provider: gemini
+fallback_provider: openrouter_paid
 
 # Paid fallback keys (used when ALL free keys exhausted)
-# Add to st.secrets.OPENROUTER_PAID_KEYS as list
+# Add to st.secrets.OPENROUTER_PAID_KEYS
 paid_fallback_enabled: true

@@ -118,7 +118,12 @@ def save_models_cache(models: List[ModelInfo]):
 
 
 def is_free_model(model: ModelInfo) -> bool:
-    """Check if model is free (prompt + completion pricing = 0)."""
+    """Check if model is free (prompt + completion pricing = 0) and not from excluded providers."""
+    # Exclude Google / Gemma / Gemini models per user requirement
+    mid_lower = model.id.lower()
+    if any(k in mid_lower for k in ("google", "gemma", "gemini")):
+        return False
+
     pricing = model.pricing
     prompt_price = float(pricing.get("prompt", "0"))
     completion_price = float(pricing.get("completion", "0"))
@@ -163,17 +168,17 @@ def discover_models(api_key: Optional[str] = None, force_refresh: bool = False) 
                 pass
         
         return {
-            "extract": ["nvidia/nemotron-3-ultra:free", "openrouter/auto"],
-            "longdoc": ["nvidia/nemotron-3-ultra:free", "openrouter/auto"],
-            "write": ["qwen/qwen-2.5-72b-instruct:free", "openrouter/auto"],
-            "verify": ["google/gemma-2-27b-it:free", "openrouter/auto"],
+            "extract": ["nvidia/nemotron-3-ultra:free", "qwen/qwen-2.5-72b-instruct:free", "openrouter/auto"],
+            "longdoc": ["nvidia/nemotron-3-ultra:free", "meta-llama/llama-3.1-70b-instruct:free", "openrouter/auto"],
+            "write": ["qwen/qwen-2.5-72b-instruct:free", "meta-llama/llama-3.3-70b-instruct:free", "openrouter/auto"],
+            "verify": ["qwen/qwen-2.5-72b-instruct:free", "meta-llama/llama-3.3-70b-instruct:free", "openrouter/auto"],
         }
 
 
 def categorize_models(models: List[ModelInfo]) -> Dict[str, List[str]]:
     """
     Categorize models by task suitability based on:
-    - Free tier availability
+    - Free tier availability (excluding Google/Gemma/Gemini)
     - Context window (longdoc needs 100k+)
     - Instruction following quality (heuristic by provider)
     - JSON mode / structured output support
@@ -183,11 +188,12 @@ def categorize_models(models: List[ModelInfo]) -> Dict[str, List[str]]:
     
     # Sort by context length (descending) then by provider preference
     provider_priority = {
-        "nvidia": 1,      # Nemotron - good reasoning
-        "qwen": 2,        # Qwen - strong instruction following
-        "meta-llama": 3,  # Llama - solid general purpose
-        "google": 4,      # Gemma - good for verification
-        "mistral": 5,
+        "qwen": 1,        # Qwen - strong instruction following & analysis
+        "meta-llama": 2,  # Llama 3.3/3.1 - solid reasoning
+        "deepseek": 3,    # DeepSeek - high reasoning
+        "nvidia": 4,      # Nemotron - good structured extraction
+        "mistral": 5,     # Mistral - reliable
+        "mistralai": 5,
         "cohere": 6,
         "openrouter": 99, # Auto router
     }
