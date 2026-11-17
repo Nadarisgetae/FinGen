@@ -1,33 +1,27 @@
 # FinGen v2 — Model Routing Config
-# OpenRouter Free Models (strictly non-Google: Qwen, Llama, DeepSeek, Nemotron, Mistral)
+# OpenRouter Free Models (strictly non-Google, verified active & fast)
 
 tasks:
   extract:
-    - nvidia/nemotron-3-ultra:free
-    - qwen/qwen-2.5-72b-instruct:free
-    - meta-llama/llama-3.3-70b-instruct:free
-    - meta-llama/llama-3.1-70b-instruct:free
-    - deepseek/deepseek-chat:free
-    - openrouter/auto
+    - nvidia/nemotron-3-ultra-550b-a55b:free
+    - openrouter/free
+    - recursive/flint-v1.0:free
+    - inclusionai/ling-3.2-flash:free
   longdoc:
-    - nvidia/nemotron-3-ultra:free
-    - qwen/qwen-2.5-72b-instruct:free
-    - meta-llama/llama-3.1-70b-instruct:free
-    - mistralai/mistral-nemo:free
-    - openrouter/auto
+    - nvidia/nemotron-3-ultra-550b-a55b:free
+    - openrouter/free
+    - recursive/flint-v1.0:free
+    - inclusionai/ling-3.2-flash:free
   write:
-    - qwen/qwen-2.5-72b-instruct:free
-    - meta-llama/llama-3.3-70b-instruct:free
-    - meta-llama/llama-3.1-70b-instruct:free
-    - deepseek/deepseek-chat:free
-    - mistralai/mistral-small-24b-instruct-2501:free
-    - openrouter/auto
+    - nvidia/nemotron-3-ultra-550b-a55b:free
+    - openrouter/free
+    - recursive/flint-v1.0:free
+    - inclusionai/ling-3.2-flash:free
   verify:
-    - qwen/qwen-2.5-72b-instruct:free
-    - meta-llama/llama-3.3-70b-instruct:free
-    - deepseek/deepseek-chat:free
-    - mistralai/mistral-small-24b-instruct-2501:free
-    - openrouter/auto
+    - nvidia/nemotron-3-ultra-550b-a55b:free
+    - openrouter/free
+    - recursive/flint-v1.0:free
+    - inclusionai/ling-3.2-flash:free
 
 fallback_provider: openrouter_paid
 

@@ -111,7 +111,7 @@ class Router:
         st_secrets=None,
         supabase_client=None,
         max_retries: int = 3,
-        default_timeout: int = 120,
+        default_timeout: int = 30,
     ):
         if supabase_client is not None:
             self.supabase = supabase_client
@@ -173,7 +173,7 @@ class Router:
         messages: List[Dict],
         schema: Optional[Type[T]] = None,
         temperature: float = 0.1,
-        max_tokens: int = 4096,
+        max_tokens: int = 2048,
     ) -> LLMCallResult:
         """Make raw API call to OpenRouter."""
         headers = {
@@ -188,6 +188,7 @@ class Router:
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
+            "reasoning": {"effort": "none"},
         }
         
         # Enable JSON mode if schema provided and model supports it
@@ -212,16 +213,9 @@ class Router:
             latency_ms=latency_ms,
         )
         
-        if resp.status_code in (401, 402, 403, 429):
-            # Raise so the rotation wrapper can handle it
+        if resp.status_code >= 400:
             raise LLMAPIError(
-                f"OpenRouter returned {resp.status_code}",
-                status_code=resp.status_code,
-            )
-
-        if resp.status_code >= 500:
-            raise LLMAPIError(
-                f"OpenRouter server error {resp.status_code}",
+                f"OpenRouter returned {resp.status_code}: {resp.text[:200]}",
                 status_code=resp.status_code,
             )
 
@@ -229,7 +223,10 @@ class Router:
         data = resp.json()
         
         choice = data["choices"][0]
-        content = choice["message"]["content"] or ""
+        msg = choice.get("message", {})
+        content = msg.get("content") or ""
+        if not content and msg.get("reasoning"):
+            content = msg["reasoning"]
         
         usage = data.get("usage", {})
         tokens_prompt = usage.get("prompt_tokens", 0)
@@ -259,19 +256,50 @@ class Router:
         except (json.JSONDecodeError, ValidationError) as e:
             if attempt >= self.max_retries:
                 raise
-            logger.warning(f"Validation failed (attempt {attempt + 1}): {e}")
+            logger.warning(f"Validation failed (attempt {attempt + 1}): {e} | Raw: {content[:120]!r}")
             # Re-prompt with error - handled by caller
             raise ValidationRetryError(str(e), content)
     
     def _extract_json(self, content: str) -> str:
-        """Extract JSON from response (handles markdown fences)."""
+        """Extract JSON from response (handles markdown fences, surrounding text, and truncation)."""
         content = content.strip()
         if content.startswith("```"):
-            # Find first { and last }
-            start = content.find("{")
-            end = content.rfind("}")
-            if start >= 0 and end > start:
-                return content[start:end+1]
+            lines = content.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip().startswith("```"):
+                lines = lines[:-1]
+            content = "\n".join(lines).strip()
+
+        start_obj = content.find("{")
+        start_arr = content.find("[")
+        if start_obj != -1 and (start_arr == -1 or start_obj < start_arr):
+            start = start_obj
+        else:
+            start = start_arr
+
+        if start != -1:
+            content = content[start:]
+
+        try:
+            json.loads(content)
+            return content
+        except Exception:
+            pass
+
+        # Recover from truncated JSON by backtracking to last complete object
+        last_brace = content.rfind("}")
+        while last_brace > 0:
+            candidate = content[:last_brace + 1]
+            open_brackets = candidate.count("[") - candidate.count("]")
+            open_braces = candidate.count("{") - candidate.count("}")
+            candidate_closed = candidate + ("]" * max(0, open_brackets)) + ("}" * max(0, open_braces))
+            try:
+                json.loads(candidate_closed)
+                return candidate_closed
+            except Exception:
+                last_brace = content.rfind("}", 0, last_brace)
+
         return content
     
     def call(
@@ -280,7 +308,7 @@ class Router:
         messages: List[Dict],
         schema: Optional[Type[T]] = None,
         temperature: float = 0.1,
-        max_tokens: int = 4096,
+        max_tokens: int = 2048,
         use_cache: bool = True,
     ) -> T | str:
         """
@@ -362,11 +390,12 @@ class Router:
                             return validated
                         except ValidationRetryError as e:
                             last_error = e
+                            bad_snippet = e.bad_response[:300] + "..." if len(e.bad_response) > 300 else e.bad_response
                             # Re-prompt with validation error (same key, new request)
                             current_messages = messages + [{
                                 "role": "user",
                                 "content": f"Previous response failed validation: {e.error}. "
-                                           f"Your response: {e.bad_response}. "
+                                           f"Your response started with: {bad_snippet}. "
                                            f"Return ONLY valid JSON matching the schema."
                             }]
                             try:
@@ -386,9 +415,9 @@ class Router:
                             except Exception as api_err:
                                 self.key_pool.record_failure(key, api_err)
                                 break
-                    # All retries exhausted
-                    self.key_pool.record_failure(key, last_error, status_code=400)
-                    continue
+                    # All retries exhausted for this model — try next model without penalizing the key
+                    logger.warning(f"Validation retries exhausted for {model}, switching to next model")
+                    break
                 else:
                     # No schema — return raw content
                     if cache_key:

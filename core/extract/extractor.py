@@ -7,7 +7,7 @@ Maps raw labels -> taxonomy keys. Outputs Fact rows + narrative snippets.
 import re
 import json
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from pathlib import Path
 
 import yaml
@@ -298,30 +298,37 @@ class Extractor:
 
         for line in lines:
             stripped = line.strip()
-            # Detect headings (#, all-caps short line, or markdown bold title)
-            is_heading = (
-                stripped.startswith("#") or
-                stripped.startswith("**") and stripped.endswith("**") and len(stripped) < 80 or
-                (len(stripped) < 80 and stripped.isupper() and any(c.isalpha() for c in stripped))
-            )
+            if not stripped:
+                continue
 
-            if is_heading:
-                clean_heading = stripped.lstrip("#* ").rstrip("* ")
-                classified = classify_heading(clean_heading)
-                if classified:
-                    current_section = classified
-                    statement_line_count = 0
-                elif current_section in ("CONSOLIDATED_IS", "CONSOLIDATED_BS", "CONSOLIDATED_CF",
-                                         "STANDALONE_IS", "STANDALONE_BS", "STANDALONE_CF"):
-                    # Check if line looks like a note boundary
-                    if any(term in clean_heading.lower() for term in ["note", "schedule", "annexure"]):
-                        current_section = "NOTES"
+            # Detect headings by classification keywords or markdown/formatting heuristics
+            classified = None
+            if len(stripped) < 140:
+                classified = classify_heading(stripped)
+
+            if classified:
+                current_section = classified
+                statement_line_count = 0
             else:
-                if current_section in ("CONSOLIDATED_IS", "CONSOLIDATED_BS", "CONSOLIDATED_CF",
-                                       "STANDALONE_IS", "STANDALONE_BS", "STANDALONE_CF"):
-                    statement_line_count += 1
-                    if statement_line_count > MAX_STATEMENT_LINES:
-                        current_section = "OTHER"
+                is_heading = (
+                    stripped.startswith("#") or
+                    (stripped.startswith("**") and stripped.endswith("**") and len(stripped) < 80) or
+                    (len(stripped) < 80 and stripped.isupper() and any(c.isalpha() for c in stripped))
+                )
+
+                if is_heading:
+                    clean_heading = stripped.lstrip("#* ").rstrip("* ")
+                    if current_section in ("CONSOLIDATED_IS", "CONSOLIDATED_BS", "CONSOLIDATED_CF",
+                                             "STANDALONE_IS", "STANDALONE_BS", "STANDALONE_CF"):
+                        # Check if line looks like a note boundary
+                        if any(term in clean_heading.lower() for term in ["note", "schedule", "annexure"]):
+                            current_section = "NOTES"
+                else:
+                    if current_section in ("CONSOLIDATED_IS", "CONSOLIDATED_BS", "CONSOLIDATED_CF",
+                                           "STANDALONE_IS", "STANDALONE_BS", "STANDALONE_CF"):
+                        statement_line_count += 1
+                        if statement_line_count > MAX_STATEMENT_LINES:
+                            current_section = "OTHER"
 
             if current_section not in raw_sections:
                 raw_sections[current_section] = []
@@ -350,6 +357,153 @@ class Extractor:
 
         return final_sections
 
+    def _detect_unit(self, text: str) -> str:
+        """Detect reporting currency/unit from section header text."""
+        header = text[:1500].lower()
+        if "lakh" in header:
+            return "INR_lakh"
+        elif "crore" in header or "cr." in header:
+            return "INR_cr"
+        elif "billion" in header or "bn" in header:
+            return "USD_bn"
+        elif "million" in header or "mn" in header:
+            return "USD_mn"
+        return "INR_cr"
+
+    @staticmethod
+    def _parse_num(s: str) -> Optional[float]:
+        """Parse numeric values with commas, minus signs, or parentheses for negatives."""
+        if not s:
+            return None
+        s = s.strip()
+        is_neg = False
+        if s.startswith("(") and s.endswith(")"):
+            is_neg = True
+            s = s[1:-1].strip()
+        elif s.startswith("-"):
+            is_neg = True
+            s = s[1:].strip()
+        s = s.replace(",", "")
+        try:
+            val = float(s)
+            return -val if is_neg else val
+        except ValueError:
+            return None
+
+    def _extract_deterministic_facts(
+        self,
+        company_id,
+        document_id,
+        section: str,
+        section_text: str,
+        fiscal_year: str = None,
+    ) -> Tuple[List[Fact], List[Dict]]:
+        """
+        Deterministic extraction of financial facts using taxonomy label matching,
+        colon/table cell delimiters, and adjacent numeric lookahead.
+        """
+        facts: List[Fact] = []
+        unmapped: List[Dict] = []
+        target_period = fiscal_year or "FY25"
+        unit = self._detect_unit(section_text)
+
+        num_pattern = re.compile(r"^[\(\-]?\s*[\d,]+(?:\.\d+)?\s*[\)]?$")
+        lines = [l.strip() for l in section_text.split("\n") if l.strip()]
+
+        seen_keys = set()
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+
+            # Pattern 1: Colon delimiter "Label: 12345.67"
+            if ":" in line and not line.startswith("http"):
+                parts = line.split(":", 1)
+                lbl = parts[0].strip().lstrip("#* -")
+                raw_val = parts[1].strip()
+                tax_key = self._classify_label(lbl)
+                num = self._parse_num(raw_val.split()[0] if raw_val else "")
+                if tax_key and num is not None and tax_key not in seen_keys:
+                    seen_keys.add(tax_key)
+                    facts.append(Fact(
+                        company_id=company_id,
+                        document_id=document_id,
+                        statement=section,
+                        line_item=tax_key,
+                        raw_label=lbl,
+                        period=target_period,
+                        period_type=self._infer_period_type(target_period),
+                        value=num,
+                        unit=unit,
+                        confidence=0.95,
+                        source_text=line,
+                    ))
+                    i += 1
+                    continue
+
+            # Pattern 2: Multi-cell row (tab, multi-space, pipe)
+            cells = [c.strip() for c in re.split(r"\s{2,}|\t|\|", line) if c.strip()]
+            if len(cells) >= 2:
+                lbl = cells[0].lstrip("#* -")
+                val_nums = [self._parse_num(c) for c in cells[1:] if self._parse_num(c) is not None]
+                if val_nums:
+                    tax_key = self._classify_label(lbl)
+                    if tax_key and tax_key not in seen_keys:
+                        seen_keys.add(tax_key)
+                        val = val_nums[-1] if len(val_nums) >= 5 else val_nums[0]
+                        facts.append(Fact(
+                            company_id=company_id,
+                            document_id=document_id,
+                            statement=section,
+                            line_item=tax_key,
+                            raw_label=lbl,
+                            period=target_period,
+                            period_type=self._infer_period_type(target_period),
+                            value=val,
+                            unit=unit,
+                            confidence=0.95,
+                            source_text=line,
+                        ))
+                        i += 1
+                        continue
+
+            # Pattern 3: Vertical layout (Label on line i, numbers on subsequent lines i+1..i+k)
+            tax_key = self._classify_label(line.lstrip("#* -"))
+            if tax_key and tax_key not in seen_keys:
+                nums = []
+                j = i + 1
+                while j < len(lines) and j < i + 10:
+                    nxt = lines[j]
+                    if num_pattern.match(nxt):
+                        parsed = self._parse_num(nxt)
+                        if parsed is not None:
+                            nums.append(parsed)
+                        j += 1
+                    else:
+                        break
+
+                if nums:
+                    seen_keys.add(tax_key)
+                    val = nums[-1] if len(nums) >= 5 else nums[0]
+                    facts.append(Fact(
+                        company_id=company_id,
+                        document_id=document_id,
+                        statement=section,
+                        line_item=tax_key,
+                        raw_label=line,
+                        period=target_period,
+                        period_type=self._infer_period_type(target_period),
+                        value=val,
+                        unit=unit,
+                        confidence=0.95,
+                        source_text=f"{line} -> {val}",
+                    ))
+                    i = j
+                    continue
+
+            i += 1
+
+        return facts, unmapped
+
     def _extract_financial_section(
         self,
         company_id,
@@ -359,7 +513,16 @@ class Extractor:
         section_text: str,
         fiscal_year: str = None,
     ) -> tuple:
-        """Extraction of a financial statement section using the LLM Router."""
+        """Extraction of a financial statement section using deterministic extraction + LLM Router."""
+        # 1. Deterministic baseline extraction
+        det_facts, det_unmapped = self._extract_deterministic_facts(
+            company_id=company_id,
+            document_id=document_id,
+            section=section,
+            section_text=section_text,
+            fiscal_year=fiscal_year,
+        )
+
         statement_key = {
             "IS": "income_statement",
             "BS": "balance_sheet",
@@ -370,9 +533,13 @@ class Extractor:
         tax_subset = self.taxonomy.get(statement_key, {})
         tax_json = json.dumps(tax_subset, indent=2, ensure_ascii=False)
 
+        # Compact section text to prevent token limit truncation
+        lines = [l for l in section_text.split("\n") if l.strip()]
+        trimmed_text = "\n".join(lines[:120]) if len(lines) > 120 else section_text
+
         system = (
             "You are a financial document extraction engine for corporate reporting. "
-            "Extract EVERY numerical financial line item from the provided document section. "
+            f"Extract key numerical financial line items for target fiscal year {fiscal_year or 'Latest'}. "
             "Map each raw line item to its corresponding canonical taxonomy key.\n"
             "Rules:\n"
             "1. Copy numbers EXACTLY as printed. Never calculate, invent, round, or extrapolate.\n"
@@ -388,50 +555,63 @@ class Extractor:
         user = (
             f"TAXONOMY FOR {section}:\n{tax_json}\n\n"
             f"DOCUMENT SECTION ({section}, target fiscal year: {fiscal_year or 'Latest'}):\n"
-            f"{section_text}\n\n"
+            f"{trimmed_text}\n\n"
             "Extract all facts and unmapped line items into valid JSON."
         )
 
         messages = build_extraction_prompt(system, user, FactListResponse)
 
+        llm_facts: List[Fact] = []
+        llm_unmapped: List[Dict] = []
+        calls = 0
+
         try:
             parsed = self.router.call(TaskType.EXTRACT, messages, schema=FactListResponse)
             result = parsed.model_dump() if hasattr(parsed, "model_dump") else parsed
+            calls = 1
+
+            for item in (result.get("facts") or []):
+                line_item = item.get("line_item")
+                raw_label = item.get("raw_label", "")
+                if not line_item:
+                    line_item = self._classify_label(raw_label)
+                if not line_item:
+                    continue
+
+                try:
+                    period_val = item.get("period") or fiscal_year or "FY24"
+                    fact = Fact(
+                        company_id=company_id,
+                        document_id=document_id,
+                        statement=section,
+                        line_item=line_item,
+                        raw_label=raw_label,
+                        period=period_val,
+                        period_type=self._infer_period_type(period_val),
+                        value=float(item.get("value", 0.0)),
+                        unit=item.get("unit", "INR_cr"),
+                        page=item.get("page"),
+                        confidence=0.9,
+                        source_text=raw_label,
+                    )
+                    llm_facts.append(fact)
+                except Exception as e:
+                    logger.warning(f"Failed to build Fact from item {item}: {e}")
+
+            llm_unmapped = result.get("unmapped") or []
         except Exception as e:
-            logger.error(f"Extraction LLM call failed for {section}: {e}")
-            return [], [], 0
+            logger.warning(f"LLM extraction for {section} encountered {e}; utilizing deterministic facts")
 
-        facts = []
-        for item in (result.get("facts") or []):
-            line_item = item.get("line_item")
-            raw_label = item.get("raw_label", "")
-            if not line_item:
-                line_item = self._classify_label(raw_label)
-            if not line_item:
-                continue
+        # Merge facts: deterministic facts provide solid foundation, LLM facts add any extras
+        facts_by_key = {}
+        for f in det_facts:
+            facts_by_key[(f.line_item, f.period)] = f
+        for f in llm_facts:
+            facts_by_key[(f.line_item, f.period)] = f
+        final_facts = list(facts_by_key.values())
+        final_unmapped = det_unmapped + llm_unmapped
 
-            try:
-                period_val = item.get("period") or fiscal_year or "FY24"
-                fact = Fact(
-                    company_id=company_id,
-                    document_id=document_id,
-                    statement=section,
-                    line_item=line_item,
-                    raw_label=raw_label,
-                    period=period_val,
-                    period_type=self._infer_period_type(period_val),
-                    value=float(item.get("value", 0.0)),
-                    unit=item.get("unit", "INR_cr"),
-                    page=item.get("page"),
-                    confidence=0.9,
-                    source_text=raw_label,
-                )
-                facts.append(fact)
-            except Exception as e:
-                logger.warning(f"Failed to build Fact from item {item}: {e}")
-
-        unmapped = result.get("unmapped") or []
-        return facts, unmapped, 1
+        return final_facts, final_unmapped, calls
 
     def _extract_narrative(
         self,
