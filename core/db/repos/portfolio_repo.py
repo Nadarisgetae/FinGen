@@ -32,6 +32,11 @@ class HoldingRepo(BaseRepo):
             "ticker": ticker,
             **kwargs
         }
+        if self.client is None:
+            existing = self.list({"portfolio_id": str(portfolio_id), "ticker": ticker})
+            if existing:
+                return self.update(existing[0]["id"], data) or data
+            return self.create(data) or data
         result = self.client.table(self.table).upsert(
             data, on_conflict="portfolio_id,ticker"
         ).execute()
@@ -76,6 +81,8 @@ class PriceRepo(BaseRepo):
         """Bulk upsert price data."""
         if not prices:
             return 0
+        if self.client is None:
+            return len(self.bulk_create(prices))
         try:
             result = self.client.table(self.table).upsert(
                 prices,
@@ -87,26 +94,32 @@ class PriceRepo(BaseRepo):
             raise
     
     def get_latest_price(self, ticker: str, exchange: str = None) -> Optional[dict]:
-        query = self.client.table(self.table).select("*").eq("ticker", ticker).order("date", desc=True).limit(1)
+        filters = {"ticker": ticker}
         if exchange:
-            query = query.eq("exchange", exchange)
-        result = query.execute()
-        return result.data[0] if result.data else None
+            filters["exchange"] = exchange
+        rows = self.list(filters, order_by="date", desc=True, limit=1)
+        return rows[0] if rows else None
     
     def get_price_series(self, ticker: str, exchange: str = None, start_date: date = None, end_date: date = None) -> List[dict]:
-        query = self.client.table(self.table).select("*").eq("ticker", ticker)
+        filters = {"ticker": ticker}
         if exchange:
-            query = query.eq("exchange", exchange)
+            filters["exchange"] = exchange
+        rows = self.list(filters, order_by="date", desc=False)
         if start_date:
-            query = query.gte("date", start_date.isoformat())
+            rows = [r for r in rows if str(r.get("date", "")) >= start_date.isoformat()]
         if end_date:
-            query = query.lte("date", end_date.isoformat())
-        query = query.order("date", desc=False)
-        result = query.execute()
-        return result.data or []
+            rows = [r for r in rows if str(r.get("date", "")) <= end_date.isoformat()]
+        return rows
     
     def get_prices_for_tickers(self, tickers: List[str], date: date = None) -> Dict[str, float]:
         """Get prices for multiple tickers on a specific date (or latest)."""
+        if self.client is None:
+            res = {}
+            for t in tickers:
+                p = self.get_latest_price(t)
+                if p and "close" in p:
+                    res[t] = float(p["close"])
+            return res
         query = self.client.table(self.table).select("ticker,close,date").in_("ticker", tickers)
         if date:
             query = query.eq("date", date.isoformat())

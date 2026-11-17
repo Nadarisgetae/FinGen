@@ -7,6 +7,7 @@ __pycache__/
 # Environment variables & secrets
 .env
 .streamlit/secrets.toml
+.streamlit/machine_id*
 
 # Virtual environments
 venv/

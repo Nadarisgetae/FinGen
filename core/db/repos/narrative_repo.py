@@ -26,12 +26,7 @@ class NarrativeRepo(BaseRepo):
                 "page": s.page,
                 "themes": s.themes,
             })
-        try:
-            result = self.client.table(self.table).insert(payload).execute()
-            return result.data or []
-        except Exception as e:
-            logger.error(f"Bulk create snippets failed: {e}")
-            raise
+        return self.bulk_create(payload, returning=True)
 
     def get_by_company(self, company_id: UUID, section: str = None) -> List[dict]:
         filters = {"company_id": str(company_id)}
@@ -41,10 +36,20 @@ class NarrativeRepo(BaseRepo):
 
     def get_by_theme(self, company_id: UUID, theme: str) -> List[dict]:
         """Get snippets tagged with a specific theme (e.g., 'litigation')."""
-        result = self.client.table(self.table).select("*").eq(
-            "company_id", str(company_id)
-        ).contains("themes", [theme]).execute()
-        return result.data or []
+        if self.client is None:
+            from core.db.repos.base import _in_memory_db
+            return [
+                r for r in _in_memory_db.get(self.table, [])
+                if str(r.get("company_id")) == str(company_id) and theme in (r.get("themes") or [])
+            ]
+        try:
+            result = self.client.table(self.table).select("*").eq(
+                "company_id", str(company_id)
+            ).contains("themes", [theme]).execute()
+            return result.data or []
+        except Exception as e:
+            logger.error(f"Get by theme failed: {e}")
+            return []
 
 
 import logging

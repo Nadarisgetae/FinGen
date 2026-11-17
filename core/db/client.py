@@ -18,6 +18,26 @@ _client: Optional[Client] = None
 _service_client: Optional[Client] = None
 
 
+def _get_secret(key_name: str) -> Optional[str]:
+    val = os.getenv(key_name)
+    if not val:
+        try:
+            import streamlit as st
+            val = st.secrets.get(key_name)
+        except Exception:
+            val = None
+    if not val:
+        try:
+            import tomllib
+            if os.path.exists(".streamlit/secrets.toml"):
+                with open(".streamlit/secrets.toml", "rb") as f:
+                    sec = tomllib.load(f)
+                    val = sec.get(key_name)
+        except Exception:
+            val = None
+    return val
+
+
 def get_supabase_client(use_service_key: bool = False) -> Client:
     """
     Get or create Supabase client singleton.
@@ -36,19 +56,19 @@ def get_supabase_client(use_service_key: bool = False) -> Client:
 
     if use_service_key:
         if _service_client is None:
-            url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
-            key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+            url = _get_secret("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+            key = _get_secret("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
             if not url or not key:
-                raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_KEY must be set in environment")
+                raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_KEY must be set in environment or secrets.toml")
             _service_client = create_client(url, key)
             logger.info("Supabase service client initialized")
         return _service_client
     else:
         if _client is None:
-            url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
-            key = os.getenv("SUPABASE_ANON_KEY") or os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+            url = _get_secret("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+            key = _get_secret("SUPABASE_ANON_KEY") or os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
             if not url or not key:
-                raise RuntimeError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment")
+                raise RuntimeError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment or secrets.toml")
             _client = create_client(url, key)
             logger.info("Supabase anon client initialized")
         return _client
