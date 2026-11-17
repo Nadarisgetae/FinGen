@@ -6,6 +6,7 @@ Tests offline end-to-end generation, in-memory repository persistence, and page 
 import os
 import io
 import py_compile
+from unittest.mock import patch
 import pytest
 from uuid import uuid4
 
@@ -93,7 +94,8 @@ def test_assumption_repo_persistence(sample_user_and_company):
     assert "revenue_growth" in retrieved["base"]
 
 
-def test_job_worker_end_to_end_generation(sample_user_and_company):
+@patch("core.llm.router.Router.call", return_value="### Section Content\nGenerated section analysis.")
+def test_job_worker_end_to_end_generation(mock_call, sample_user_and_company):
     """Test running JobWorker synchronously to generate a report, render docx, and record report."""
     user_id, company_id = sample_user_and_company
     

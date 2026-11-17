@@ -342,7 +342,7 @@ ANALYTICS_REGISTRY: Dict[str, AnalyticsSpec] = {
     "concentration_risk": AnalyticsSpec(
         name="concentration_risk",
         description="Revenue/segment/customer/geography concentration (HHI, top-N share)",
-        requires=["SEGMENT.segment_revenue"],
+        requires=[],
         returns="Dict[str, float]",
         period_alignment=PeriodAlignment.SAME,
         output_unit="ratio",

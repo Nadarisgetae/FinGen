@@ -68,8 +68,12 @@ class ReportGenerator:
         if self._router is None:
             try:
                 self._router = get_router()
-            except Exception as e:
-                logger.debug(f"Router not yet initialized: {e}")
+            except Exception:
+                try:
+                    from core.llm.router import Router
+                    self._router = Router()
+                except Exception as e:
+                    logger.debug(f"Router initialization failed: {e}")
         return self._router
 
     def generate(
